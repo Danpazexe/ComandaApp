@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const CARDAPIO_KEY = 'cardapio_dinamico';
 const STORAGE_KEY = 'relatorio_vendas';
+const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
+const COMANDA_NUM_KEY = 'comanda_numero_atual';
 
 let vendasGlobais: Record<string, number> = {};
 
@@ -31,6 +33,7 @@ export async function registrarVenda(itens: string[]) {
 export default function RelatorioScreen() {
   const [vendas, setVendas] = useState<Record<string, number>>({ ...vendasGlobais });
   const [cardapio, setCardapio] = useState<{ nome: string, valor: string }[]>([]);
+  const [comandasAtendidas, setComandasAtendidas] = useState<number>(0);
   const isFocused = useIsFocused();
 
   useEffect(() => {
@@ -39,6 +42,9 @@ export default function RelatorioScreen() {
       const data = await AsyncStorage.getItem(CARDAPIO_KEY);
       setCardapio(data ? JSON.parse(data) : []);
       setVendas({ ...vendasGlobais });
+      // Buscar total de comandas atendidas
+      const atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
+      setComandasAtendidas(atendidas ? parseInt(atendidas, 10) : 0);
     }
     if (isFocused) sync();
   }, [isFocused]);
@@ -54,10 +60,22 @@ export default function RelatorioScreen() {
     ]);
   }
 
+  async function limparComandasAtendidas() {
+    Alert.alert('Limpar Comandas', 'Tem certeza que deseja zerar o contador de comandas atendidas?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Limpar', style: 'destructive', onPress: async () => {
+        await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, '0');
+        await AsyncStorage.setItem(COMANDA_NUM_KEY, '1');
+        setComandasAtendidas(0);
+      }}
+    ]);
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         <StatusBar backgroundColor="#4caf50" barStyle="light-content" />
+        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1976d2', marginBottom: 12 }}>Comandas atendidas: {comandasAtendidas}</Text>
         <View style={styles.headerRow}>
           <Text style={styles.headerItem}>Sabores</Text>
           <Text style={styles.headerItem}>Quantidade</Text>
@@ -72,9 +90,14 @@ export default function RelatorioScreen() {
             </View>
           )}
         />
-        <TouchableOpacity style={styles.clearButton} onPress={limparRelatorio}>
-          <Text style={styles.clearButtonText}>Limpar Relatório</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
+          <TouchableOpacity style={[styles.clearButton, { flex: 1, marginRight: 8 }]} onPress={limparRelatorio}>
+            <Text style={styles.clearButtonText}>Limpar Relatório</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.clearButton, { flex: 1, marginLeft: 8 }]} onPress={limparComandasAtendidas}>
+            <Text style={styles.clearButtonText}>Limpar Comandas</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );

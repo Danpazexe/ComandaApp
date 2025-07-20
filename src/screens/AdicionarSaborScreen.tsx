@@ -121,8 +121,8 @@ export default function AdicionarSaborScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f7f7f7', padding: 16 },
-  input: { width: '90%', backgroundColor: '#fff', borderRadius: 8, padding: 16, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#ccc' },
-  button: { backgroundColor: '#4caf50', padding: 16, borderRadius: 8, alignItems: 'center', width: '90%' },
+  input: { width: '78%', backgroundColor: '#fff', borderRadius: 8, padding: 16, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#ccc' },
+  button: { backgroundColor: '#4caf50', padding: 16, borderRadius: 8, alignItems: 'center', width: '45%' },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   saborItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 12, marginHorizontal: 8, borderWidth: 1, borderColor: '#ccc' },
   saborNome: { fontSize: 16, fontWeight: 'bold', color: '#333' },

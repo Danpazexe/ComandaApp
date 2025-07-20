@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Animated, ToastAndroid, StatusBar, useWindowDimensions } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { registrarVenda } from './RelatorioScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 
 const CARDAPIO_KEY = 'cardapio_dinamico';
+const COMANDA_NUM_KEY = 'comanda_numero_atual';
+const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
@@ -13,10 +16,12 @@ export default function ComandaScreen({ navigation }: Props) {
   const [itens, setItens] = useState<string[]>([]);
   const [cardapio, setCardapio] = useState<{ nome: string, valor: string }[]>([]);
   const [fadeAnims, setFadeAnims] = useState<Animated.Value[]>([]);
+  const [numeroComanda, setNumeroComanda] = useState<number | null>(null);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height && width > 700;
+  const isFocused = useIsFocused();
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function carregarCardapio() {
       const data = await AsyncStorage.getItem(CARDAPIO_KEY);
       if (data) setCardapio(JSON.parse(data));
@@ -24,6 +29,15 @@ export default function ComandaScreen({ navigation }: Props) {
     }
     carregarCardapio();
   }, []);
+
+  useEffect(() => {
+    async function buscarNumeroComanda() {
+      let numAtual = await AsyncStorage.getItem(COMANDA_NUM_KEY);
+      let numero = numAtual ? parseInt(numAtual, 10) : 1;
+      setNumeroComanda(numero);
+    }
+    if (isFocused) buscarNumeroComanda();
+  }, [isFocused]);
 
   React.useEffect(() => {
     setFadeAnims(itens.map(() => new Animated.Value(1)));
@@ -43,11 +57,20 @@ export default function ComandaScreen({ navigation }: Props) {
     });
   }
 
-  function fecharComanda() {
+  async function fecharComanda() {
     if (itens.length === 0) return;
     registrarVenda(itens);
     ToastAndroid.show('Comanda finalizada!', ToastAndroid.SHORT);
     setItens([]);
+    // Incrementa e salva o número da comanda somente ao finalizar
+    if (numeroComanda !== null) {
+      const proximoNumero = numeroComanda + 1;
+      await AsyncStorage.setItem(COMANDA_NUM_KEY, proximoNumero.toString());
+    }
+    // Incrementa o contador de comandas atendidas
+    let atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
+    let total = atendidas ? parseInt(atendidas, 10) + 1 : 1;
+    await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, total.toString());
     navigation.popToTop();
   }
 
@@ -73,6 +96,9 @@ export default function ComandaScreen({ navigation }: Props) {
         {/* Coluna direita: Selecionados */}
         <View style={[styles.col, isLandscape && styles.colRight]}>
           <Text style={styles.title}>Selecionados</Text>
+          {numeroComanda !== null && (
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#e53935', marginBottom: 8 }}>Comanda Nº {numeroComanda}</Text>
+          )}
           <FlatList
             data={itens}
             keyExtractor={(_, index) => `item-${index}`}
