@@ -13,7 +13,8 @@ const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
 export default function ComandaScreen({ navigation }: Props) {
-  const [itens, setItens] = useState<string[]>([]);
+  // Trocar de string[] para array de objetos com nome e quantidade
+  const [itens, setItens] = useState<{ nome: string, quantidade: number }[]>([]);
   const [cardapio, setCardapio] = useState<{ nome: string, valor: string }[]>([]);
   const [fadeAnims, setFadeAnims] = useState<Animated.Value[]>([]);
   const [numeroComanda, setNumeroComanda] = useState<number | null>(null);
@@ -43,23 +44,42 @@ export default function ComandaScreen({ navigation }: Props) {
     setFadeAnims(itens.map(() => new Animated.Value(1)));
   }, [itens.length]);
 
-  function adicionarItem(item: string) {
-    setItens([...itens, item]);
+  function adicionarItem(itemNome: string) {
+    setItens(prevItens => {
+      const idx = prevItens.findIndex(i => i.nome === itemNome);
+      if (idx !== -1) {
+        // Já existe, soma quantidade
+        const novos = [...prevItens];
+        novos[idx] = { ...novos[idx], quantidade: novos[idx].quantidade + 1 };
+        return novos;
+      } else {
+        // Novo item
+        return [...prevItens, { nome: itemNome, quantidade: 1 }];
+      }
+    });
   }
 
   function removerItem(index: number) {
-    Animated.timing(fadeAnims[index], {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setItens(itens.filter((_, i) => i !== index));
+    setItens(prevItens => {
+      const novos = [...prevItens];
+      if (novos[index].quantidade > 1) {
+        novos[index] = { ...novos[index], quantidade: novos[index].quantidade - 1 };
+        return novos;
+      } else {
+        novos.splice(index, 1);
+        return novos;
+      }
     });
   }
 
   async function fecharComanda() {
     if (itens.length === 0) return;
-    registrarVenda(itens);
+    // Adaptar para enviar array de nomes repetidos conforme quantidade
+    const itensParaRegistrar: string[] = [];
+    itens.forEach(i => {
+      for (let j = 0; j < i.quantidade; j++) itensParaRegistrar.push(i.nome);
+    });
+    registrarVenda(itensParaRegistrar);
     ToastAndroid.show('Comanda finalizada!', ToastAndroid.SHORT);
     setItens([]);
     // Incrementa e salva o número da comanda somente ao finalizar
@@ -104,16 +124,8 @@ export default function ComandaScreen({ navigation }: Props) {
             keyExtractor={(_, index) => `item-${index}`}
             renderItem={({ item, index }) => (
               <Animated.View style={[styles.itemRow, { opacity: fadeAnims[index] || 1 }]}>
-                <Text style={styles.selectedItem}>{item}</Text>
-                <TouchableOpacity style={styles.removeButton} onPress={() => {
-                  Animated.timing(fadeAnims[index], {
-                    toValue: 0,
-                    duration: 200,
-                    useNativeDriver: true,
-                  }).start(() => {
-                    setItens(itens.filter((_, i) => i !== index));
-                  });
-                }}>
+                <Text style={styles.selectedItem}>{item.nome}  x {item.quantidade}</Text>
+                <TouchableOpacity style={styles.removeButton} onPress={() => removerItem(index)}>
                   <Text style={styles.removeButtonText}>Remover</Text>
                 </TouchableOpacity>
               </Animated.View>
