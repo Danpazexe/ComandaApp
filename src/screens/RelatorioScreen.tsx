@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const CARDAPIO_KEY = 'cardapio_dinamico';
 const STORAGE_KEY = 'relatorio_vendas';
 const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
-const COMANDA_NUM_KEY = 'comanda_numero_atual';
 
 let vendasGlobais: Record<string, number> = {};
 
@@ -60,17 +59,6 @@ export default function RelatorioScreen() {
     ]);
   }
 
-  async function limparComandasAtendidas() {
-    Alert.alert('Limpar Comandas', 'Tem certeza que deseja zerar o contador de comandas atendidas?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Limpar', style: 'destructive', onPress: async () => {
-        await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, '0');
-        await AsyncStorage.setItem(COMANDA_NUM_KEY, '1');
-        setComandasAtendidas(0);
-      }}
-    ]);
-  }
-
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
@@ -93,9 +81,6 @@ export default function RelatorioScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
           <TouchableOpacity style={[styles.clearButton, { flex: 1, marginRight: 8 }]} onPress={limparRelatorio}>
             <Text style={styles.clearButtonText}>Limpar Relatório</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.clearButton, { flex: 1, marginLeft: 8 }]} onPress={limparComandasAtendidas}>
-            <Text style={styles.clearButtonText}>Limpar Comandas</Text>
           </TouchableOpacity>
         </View>
       </View>

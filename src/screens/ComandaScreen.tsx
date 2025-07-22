@@ -12,8 +12,8 @@ const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
-export default function ComandaScreen({ navigation }: Props) {
-  // Trocar de string[] para array de objetos com nome e quantidade
+export default function ComandaScreen({ navigation, route }: Props) {
+  
   const [itens, setItens] = useState<{ nome: string, quantidade: number }[]>([]);
   const [cardapio, setCardapio] = useState<{ nome: string, valor: string }[]>([]);
   const [fadeAnims, setFadeAnims] = useState<Animated.Value[]>([]);
@@ -32,17 +32,22 @@ export default function ComandaScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    async function buscarNumeroComanda() {
-      let numAtual = await AsyncStorage.getItem(COMANDA_NUM_KEY);
-      let numero = numAtual ? parseInt(numAtual, 10) : 1;
-      setNumeroComanda(numero);
+    if (route?.params?.comandaParaEditar) {
+      setItens(route.params.comandaParaEditar.itens);
+      setNumeroComanda(route.params.comandaParaEditar.numero);
+    } else {
+      async function buscarNumeroComanda() {
+        let numAtual = await AsyncStorage.getItem(COMANDA_NUM_KEY);
+        let numero = numAtual ? parseInt(numAtual, 10) : 1;
+        setNumeroComanda(numero);
+      }
+      if (isFocused) buscarNumeroComanda();
     }
-    if (isFocused) buscarNumeroComanda();
-  }, [isFocused]);
+  }, [isFocused, route?.params]);
 
   React.useEffect(() => {
     setFadeAnims(itens.map(() => new Animated.Value(1)));
-  }, [itens.length]);
+  }, [itens]);
 
   function adicionarItem(itemNome: string) {
     setItens(prevItens => {
@@ -74,23 +79,62 @@ export default function ComandaScreen({ navigation }: Props) {
 
   async function fecharComanda() {
     if (itens.length === 0) return;
-    // Adaptar para enviar array de nomes repetidos conforme quantidade
     const itensParaRegistrar: string[] = [];
     itens.forEach(i => {
       for (let j = 0; j < i.quantidade; j++) itensParaRegistrar.push(i.nome);
     });
-    registrarVenda(itensParaRegistrar);
+
+    if (route?.params?.comandaParaEditar) {
+      // EDIÇÃO: subtrai os antigos e soma os novos manualmente
+      let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
+      let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
+      // Subtrai antigos
+      route.params.comandaParaEditar.itens.forEach((item: { nome: string; quantidade: number }) => {
+        if (vendas[item.nome]) {
+          vendas[item.nome] -= item.quantidade;
+          if (vendas[item.nome] < 0) vendas[item.nome] = 0;
+        }
+      });
+      // Soma novos
+      itens.forEach(i => {
+        vendas[i.nome] = (vendas[i.nome] || 0) + i.quantidade;
+      });
+      await AsyncStorage.setItem('relatorio_vendas', JSON.stringify(vendas));
+    } else {
+      // NOVA: usa registrarVenda normalmente
+      registrarVenda(itensParaRegistrar);
+    }
+
     ToastAndroid.show('Comanda finalizada!', ToastAndroid.SHORT);
-    setItens([]);
-    // Incrementa e salva o número da comanda somente ao finalizar
+    // Salvar ou atualizar comanda fechada
     if (numeroComanda !== null) {
+      const comandaFechada = {
+        numero: numeroComanda,
+        itens: [...itens],
+        data: new Date().toISOString(),
+      };
+      let historico = await AsyncStorage.getItem('comandas_fechadas');
+      let lista = historico ? JSON.parse(historico) : [];
+      const idx = lista.findIndex((c: any) => c.numero === numeroComanda);
+      if (route?.params?.comandaParaEditar && idx !== -1) {
+        // Atualiza a comanda existente
+        lista[idx] = comandaFechada;
+      } else {
+        // Adiciona nova comanda
+        lista.push(comandaFechada);
+      }
+      await AsyncStorage.setItem('comandas_fechadas', JSON.stringify(lista));
+    }
+    setItens([]);
+    if (!route?.params?.comandaParaEditar && numeroComanda !== null) {
+      // Só incrementa o número e o total se for nova comanda
       const proximoNumero = numeroComanda + 1;
       await AsyncStorage.setItem(COMANDA_NUM_KEY, proximoNumero.toString());
+
+      let atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
+      let total = atendidas ? parseInt(atendidas, 10) + 1 : 1;
+      await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, total.toString());
     }
-    // Incrementa o contador de comandas atendidas
-    let atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
-    let total = atendidas ? parseInt(atendidas, 10) + 1 : 1;
-    await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, total.toString());
     navigation.popToTop();
   }
 
