@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Animated, ToastAndroid, StatusBar, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Animated,
+  ToastAndroid,
+  StatusBar,
+  useWindowDimensions,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { registrarVenda } from './RelatorioScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,9 +23,12 @@ const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
 export default function ComandaScreen({ navigation, route }: Props) {
-  
-  const [itens, setItens] = useState<{ nome: string, quantidade: number }[]>([]);
-  const [cardapio, setCardapio] = useState<{ nome: string, valor: string }[]>([]);
+  const [itens, setItens] = useState<{ nome: string; quantidade: number }[]>(
+    [],
+  );
+  const [cardapio, setCardapio] = useState<{ nome: string; valor: string }[]>(
+    [],
+  );
   const [fadeAnims, setFadeAnims] = useState<Animated.Value[]>([]);
   const [numeroComanda, setNumeroComanda] = useState<number | null>(null);
   const { width, height } = useWindowDimensions();
@@ -68,7 +81,10 @@ export default function ComandaScreen({ navigation, route }: Props) {
     setItens(prevItens => {
       const novos = [...prevItens];
       if (novos[index].quantidade > 1) {
-        novos[index] = { ...novos[index], quantidade: novos[index].quantidade - 1 };
+        novos[index] = {
+          ...novos[index],
+          quantidade: novos[index].quantidade - 1,
+        };
         return novos;
       } else {
         novos.splice(index, 1);
@@ -89,12 +105,14 @@ export default function ComandaScreen({ navigation, route }: Props) {
       let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
       let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
       // Subtrai antigos
-      route.params.comandaParaEditar.itens.forEach((item: { nome: string; quantidade: number }) => {
-        if (vendas[item.nome]) {
-          vendas[item.nome] -= item.quantidade;
-          if (vendas[item.nome] < 0) vendas[item.nome] = 0;
-        }
-      });
+      route.params.comandaParaEditar.itens.forEach(
+        (item: { nome: string; quantidade: number }) => {
+          if (vendas[item.nome]) {
+            vendas[item.nome] -= item.quantidade;
+            if (vendas[item.nome] < 0) vendas[item.nome] = 0;
+          }
+        },
+      );
       // Soma novos
       itens.forEach(i => {
         vendas[i.nome] = (vendas[i.nome] || 0) + i.quantidade;
@@ -140,16 +158,21 @@ export default function ComandaScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <View style={[styles.container, isLandscape && styles.containerLandscape]}>
+      <View
+        style={[styles.container, isLandscape && styles.containerLandscape]}
+      >
         <StatusBar backgroundColor="#ffb300" barStyle="light-content" />
         {/* Coluna esquerda: Cardápio */}
         <View style={[styles.col, isLandscape && styles.colLeft]}>
           <Text style={styles.title}>Cardápio</Text>
           <FlatList
             data={cardapio}
-            keyExtractor={(item) => item.nome}
+            keyExtractor={item => item.nome}
             renderItem={({ item }) => (
-              <TouchableOpacity style={styles.menuButton} onPress={() => adicionarItem(item.nome)}>
+              <TouchableOpacity
+                style={styles.menuButton}
+                onPress={() => adicionarItem(item.nome)}
+              >
                 <Text style={styles.menuButtonTitle}>{item.nome}</Text>
                 <Text style={styles.menuButtonValor}>{item.valor}</Text>
               </TouchableOpacity>
@@ -158,18 +181,34 @@ export default function ComandaScreen({ navigation, route }: Props) {
           />
         </View>
         {/* Coluna direita: Selecionados */}
-        <View style={[styles.col, isLandscape && styles.colRight]}>
+        <View style={[styles.col, styles.colRight]}>
           <Text style={styles.title}>Selecionados</Text>
           {numeroComanda !== null && (
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#e53935', marginBottom: 8 }}>Comanda Nº {numeroComanda}</Text>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: 'bold',
+                color: '#e53935',
+                marginBottom: 8,
+              }}
+            >
+              Comanda Nº {numeroComanda}
+            </Text>
           )}
           <FlatList
             data={itens}
             keyExtractor={(_, index) => `item-${index}`}
             renderItem={({ item, index }) => (
-              <Animated.View style={[styles.itemRow, { opacity: fadeAnims[index] || 1 }]}>
-                <Text style={styles.selectedItem}>{item.nome}  x {item.quantidade}</Text>
-                <TouchableOpacity style={styles.removeButton} onPress={() => removerItem(index)}>
+              <Animated.View
+                style={[styles.itemRow, { opacity: fadeAnims[index] || 1 }]}
+              >
+                <Text style={styles.selectedItem}>
+                  {item.nome} x {item.quantidade}
+                </Text>
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => removerItem(index)}
+                >
                   <Text style={styles.removeButtonText}>Remover</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -186,19 +225,108 @@ export default function ComandaScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f7' },
-  containerLandscape: { flexDirection: 'row' },
-  col: { flex: 1, padding: 16 },
-  colLeft: { borderRightWidth: 1, borderRightColor: '#eee', maxWidth: 400 },
-  colRight: { flex: 2, paddingLeft: 32 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 16, color: '#333' },
-  menuButton: { backgroundColor: '#ffb300', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, marginBottom: 8, alignItems: 'center' },
-  menuButtonTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
-  menuButtonValor: { color: '#fffde7', fontSize: 13, marginTop: 2, textAlign: 'center' },
-  itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 8, backgroundColor: '#fff', borderRadius: 7, elevation: 1, marginBottom: 2 },
-  selectedItem: { fontSize: 15,fontWeight: 'bold', color: '#444' },
-  removeButton: { backgroundColor: '#e53935', paddingVertical: 14, paddingHorizontal: 22, borderRadius: 6 },
-  removeButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-  finishButton: { backgroundColor: '#e53935', padding: 22, borderRadius: 8, alignItems: 'center', marginTop: 18 },
-  finishButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-}); 
+  container: {
+    flex: 1,
+    backgroundColor: '#f7f7f7',
+  },
+  containerLandscape: {
+    flexDirection: 'row',
+  },
+  col: {
+    flex: 1,
+    padding: 16,
+  },
+  colLeft: {
+    borderRightWidth: 1,
+    borderRightColor: '#eee',
+    maxWidth: 400,
+  },
+  colRight: {
+    flex: 1,
+    paddingLeft: 32,
+    backgroundColor: '#fffbe7',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e0c97f',
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    padding: 18,
+    margin: 12, // espaçamento externo
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#333',
+  },
+  menuButton: {
+    backgroundColor: '#ffb300',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  menuButtonTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  menuButtonValor: {
+    color: '#fffde7',
+    fontSize: 13,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 32,
+    backgroundColor: '#fffde9',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#e0c97f',
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    padding: 9,
+
+  },
+  selectedItem: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#444',
+  },
+  removeButton: {
+    backgroundColor: '#e53935',
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    borderRadius: 6,
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  finishButton: {
+    backgroundColor: '#e53935',
+    padding: 22,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 18,
+  },
+  finishButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});

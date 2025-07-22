@@ -87,14 +87,26 @@ export default function EditarComandaScreen() {
           renderItem={({ item }) => (
             <View style={styles.comandaItem}>
               <TouchableOpacity onPress={() => editarComanda(item)} style={{ flex: 1 }}>
-                <Text style={styles.comandaText}>Comanda Nº {item.numero} - {item.data && item.data.substring(0, 10)}</Text>
-                <Text style={styles.comandaTextItens}>{item.itens.map(i => `${i.nome} x${i.quantidade}`).join(', ')}</Text>
+                <View style={styles.comandaHeader}>
+                  <Text style={styles.comandaNumero}>Comanda Nº {item.numero}</Text>
+                  <Text style={styles.comandaData}>{item.data && item.data.substring(0, 10)}</Text>
+                </View>
+                <View style={styles.saboresLista}>
+                  {item.itens.map((i, idx) => (
+                    <View key={idx} style={styles.saborLinha}>
+                      <Text style={styles.saborNome}>{i.nome}</Text>
+                      <Text style={styles.saborQtd}>x {i.quantidade}</Text>
+                    </View>
+                  ))}
+                </View>
               </TouchableOpacity>
               <TouchableOpacity style={styles.buttonExcluir} onPress={() => excluirComanda(item)}>
                 <Text style={styles.buttonExcluirText}>Excluir</Text>
               </TouchableOpacity>
             </View>
           )}
+          numColumns={2}
+          columnWrapperStyle={styles.comandaRow}
         />
         <TouchableOpacity style={styles.buttonZerar} onPress={zerarTudo}>
           <Text style={styles.buttonZerarText}>Zerar Todas as Comandas</Text>
@@ -106,12 +118,61 @@ export default function EditarComandaScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f7f7', padding: 16 },
-  
-  comandaItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#ccc' },
-  comandaText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  comandaTextItens: { fontSize: 14, color: '#666', marginTop: 4 },
-  buttonExcluir: { backgroundColor: '#e53935', padding: 8, borderRadius: 6, alignItems: 'center', marginLeft: 12 },
-  buttonExcluirText: { color: '#fff', fontWeight: 'bold' },
+  comandaItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fffbe7',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#e0c97f',
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    flex: 1,
+    maxWidth: '48%',
+  },
+  comandaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 6,
+  },
+  comandaNumero: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#b8860b',
+    letterSpacing: 1.2,
+  },
+  comandaData: {
+    fontSize: 14,
+    color: '#888',
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+  },
+  saboresLista: { marginTop: 10, marginBottom: 2 },
+  saborLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  saborNome: { fontSize: 15, color: '#333', fontFamily: 'monospace' },
+  saborQtd: { fontSize: 15, color: '#b8860b', fontWeight: 'bold', fontFamily: 'monospace' },
+  buttonExcluir: {
+    backgroundColor: '#e53935',
+    paddingVertical: 80,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginLeft: 16,
+    alignSelf: 'center',
+    shadowColor: '#e53935',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  buttonExcluirText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   buttonZerar: { backgroundColor: '#e53935', padding: 22, borderRadius: 8, alignItems: 'center', marginTop: 18 },
   buttonZerarText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  comandaRow: { justifyContent: 'space-between', marginBottom: 8 },
 }); 

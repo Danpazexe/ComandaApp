@@ -80,7 +80,13 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
               onPress={() => navigation.navigate('Comanda', { nova: true })}
               color={styles.button}
             >
-              Abrir nova comanda
+              Nova comanda
+            </AnimatedButton>
+            <AnimatedButton
+              onPress={() => navigation.navigate('EditarComanda')}
+              color={styles.buttonEdit}
+            >
+              Editar Comanda Fechada
             </AnimatedButton>
             <AnimatedButton
               onPress={() => navigation.navigate('Relatorio')}
@@ -93,12 +99,6 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
               color={styles.buttonAdd}
             >
               Novo/Editar Sabor
-            </AnimatedButton>
-            <AnimatedButton
-              onPress={() => navigation.navigate('EditarComanda')}
-              color={styles.buttonEdit}
-            >
-              Editar Comanda Fechada
             </AnimatedButton>
           </View>
         </View>
