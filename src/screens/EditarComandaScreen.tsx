@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  Alert,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +35,20 @@ export default function EditarComandaScreen() {
     setComandas(historico ? JSON.parse(historico) : []);
   }
 
+  function formatarDataHora(dataStr: string) {
+    if (!dataStr) return '';
+    const data = new Date(dataStr);
+    if (isNaN(data.getTime())) return dataStr;
+    return data.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
   // Adicionar função para excluir comanda, atualizar relatório e comandas atendidas
   async function excluirComanda(comanda: ComandaFechada) {
     Alert.alert(
@@ -34,28 +56,43 @@ export default function EditarComandaScreen() {
       'Tem certeza que deseja excluir esta comanda?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: async () => {
-          // Remover do histórico
-          const novoHistorico = comandas.filter(c => c.numero !== comanda.numero);
-          await AsyncStorage.setItem('comandas_fechadas', JSON.stringify(novoHistorico));
-          setComandas(novoHistorico);
-          // Atualizar relatório de vendas
-          let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
-          let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
-          comanda.itens.forEach(item => {
-            if (vendas[item.nome]) {
-              vendas[item.nome] -= item.quantidade;
-              if (vendas[item.nome] < 0) vendas[item.nome] = 0;
-            }
-          });
-          await AsyncStorage.setItem('relatorio_vendas', JSON.stringify(vendas));
-          // Atualizar comandas atendidas
-          let atendidasRaw = await AsyncStorage.getItem('comandas_atendidas');
-          let atendidas = atendidasRaw ? parseInt(atendidasRaw, 10) : 0;
-          if (atendidas > 0) atendidas--;
-          await AsyncStorage.setItem('comandas_atendidas', atendidas.toString());
-        }}
-      ]
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            // Remover do histórico
+            const novoHistorico = comandas.filter(
+              c => c.numero !== comanda.numero,
+            );
+            await AsyncStorage.setItem(
+              'comandas_fechadas',
+              JSON.stringify(novoHistorico),
+            );
+            setComandas(novoHistorico);
+            // Atualizar relatório de vendas
+            let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
+            let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
+            comanda.itens.forEach(item => {
+              if (vendas[item.nome]) {
+                vendas[item.nome] -= item.quantidade;
+                if (vendas[item.nome] < 0) vendas[item.nome] = 0;
+              }
+            });
+            await AsyncStorage.setItem(
+              'relatorio_vendas',
+              JSON.stringify(vendas),
+            );
+            // Atualizar comandas atendidas
+            let atendidasRaw = await AsyncStorage.getItem('comandas_atendidas');
+            let atendidas = atendidasRaw ? parseInt(atendidasRaw, 10) : 0;
+            if (atendidas > 0) atendidas--;
+            await AsyncStorage.setItem(
+              'comandas_atendidas',
+              atendidas.toString(),
+            );
+          },
+        },
+      ],
     );
   }
 
@@ -64,33 +101,50 @@ export default function EditarComandaScreen() {
   }
 
   function zerarTudo() {
-    Alert.alert('Zerar Tudo', 'Tem certeza que deseja apagar todas as comandas, relatório e contador?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Zerar', style: 'destructive', onPress: async () => {
-        await AsyncStorage.setItem('comandas_fechadas', JSON.stringify([]));
-        await AsyncStorage.setItem('relatorio_vendas', JSON.stringify({}));
-        await AsyncStorage.setItem('comandas_atendidas', '0');
-        await AsyncStorage.setItem('comanda_numero_atual', '1');
-        setComandas([]);
-      }}
-    ]);
+    Alert.alert(
+      'Zerar Tudo',
+      'Tem certeza que deseja apagar todas as comandas, relatório e contador?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Zerar',
+          style: 'destructive',
+          onPress: async () => {
+            await AsyncStorage.setItem('comandas_fechadas', JSON.stringify([]));
+            await AsyncStorage.setItem('relatorio_vendas', JSON.stringify({}));
+            await AsyncStorage.setItem('comandas_atendidas', '0');
+            await AsyncStorage.setItem('comanda_numero_atual', '1');
+            setComandas([]);
+          },
+        },
+      ],
+    );
   }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         <StatusBar backgroundColor="#9c27b0" barStyle="light-content" />
-        
+
         <FlatList
           data={comandas}
-          keyExtractor={(item, index) => `comanda-${item.numero}-${item.data}-${index}`}
+          keyExtractor={(item, index) =>
+            `comanda-${item.numero}-${item.data}-${index}`
+          }
           renderItem={({ item }) => (
             <View style={styles.comandaItem}>
-              <TouchableOpacity onPress={() => editarComanda(item)} style={{ flex: 1 }}>
-                <View style={styles.comandaHeader}>
-                  <Text style={styles.comandaNumero}>Comanda Nº {item.numero}</Text>
-                  <Text style={styles.comandaData}>{item.data && item.data.substring(0, 10)}</Text>
-                </View>
+              <View style={styles.comandaHeaderColumn}>
+                <Text style={styles.comandaNumero}>
+                  Comanda Nº {item.numero}
+                </Text>
+                <Text style={styles.comandaData}>
+                  {item.data && formatarDataHora(item.data)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => editarComanda(item)}
+                style={{ flex: 1 }}
+              >
                 <View style={styles.saboresLista}>
                   {item.itens.map((i, idx) => (
                     <View key={idx} style={styles.saborLinha}>
@@ -100,7 +154,10 @@ export default function EditarComandaScreen() {
                   ))}
                 </View>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.buttonExcluir} onPress={() => excluirComanda(item)}>
+              <TouchableOpacity
+                style={styles.buttonExcluir}
+                onPress={() => excluirComanda(item)}
+              >
                 <Text style={styles.buttonExcluirText}>Excluir</Text>
               </TouchableOpacity>
             </View>
@@ -117,13 +174,16 @@ export default function EditarComandaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f7', padding: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f7f7f7',
+    padding: 16,
+  },
   comandaItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     backgroundColor: '#fffbe7',
-    borderRadius: 14,
-    padding: 18,
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 14,
     marginBottom: 20,
     borderWidth: 2,
     borderColor: '#e0c97f',
@@ -135,44 +195,86 @@ const styles = StyleSheet.create({
     elevation: 2,
     flex: 1,
     maxWidth: '48%',
+    minHeight: 180,
+    marginHorizontal: 2,
+    justifyContent: 'space-between',
   },
   comandaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 6,
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  comandaHeaderColumn: {
+    flexDirection: 'column',
+    width: '100%',
+    marginBottom: 4,
   },
   comandaNumero: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#b8860b',
     letterSpacing: 1.2,
+    lineHeight: 24,
   },
   comandaData: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: 12,
+    color: '#aaa',
     fontWeight: 'bold',
     fontFamily: 'monospace',
+    alignSelf: 'center',
+    marginTop: 2,
+    marginBottom: 2,
   },
-  saboresLista: { marginTop: 10, marginBottom: 2 },
-  saborLinha: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
-  saborNome: { fontSize: 15, color: '#333', fontFamily: 'monospace' },
-  saborQtd: { fontSize: 15, color: '#b8860b', fontWeight: 'bold', fontFamily: 'monospace' },
+  saboresLista: {
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  saborLinha: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 1,
+    marginBottom: 2,
+  },
+  saborNome: {
+    fontSize: 15,
+    color: '#333',
+    fontFamily: 'monospace',
+    flexShrink: 1,
+  },
+  saborQtd: {
+    fontSize: 15,
+    color: '#b8860b',
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
+    marginLeft: 6,
+  },
   buttonExcluir: {
     backgroundColor: '#e53935',
-    paddingVertical: 80,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginLeft: 16,
-    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    alignSelf: 'flex-end',
+    marginTop: 10,
     shadowColor: '#e53935',
     shadowOpacity: 0.12,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  buttonExcluirText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  buttonZerar: { backgroundColor: '#e53935', padding: 22, borderRadius: 8, alignItems: 'center', marginTop: 18 },
+  buttonExcluirText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  buttonZerar: {
+    backgroundColor: '#e53935',
+    padding: 22,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 18,
+  },
   buttonZerarText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   comandaRow: { justifyContent: 'space-between', marginBottom: 8 },
-}); 
+});
