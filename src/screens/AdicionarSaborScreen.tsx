@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, FlatList, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import SaborModal from '../components/SaborModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 const CARDAPIO_KEY = 'cardapio_dinamico';
 
 const SABORES_INICIAIS = [
-  { nome: 'CARNE DE SOL+QUEIJO', valor: '2 SEMENTES OU 4 SEMENTINHAS' },
-  { nome: '2 QUEIJOS', valor: '2 SEMENTES OU 4 SEMENTINHAS' },
-  { nome: 'FRANGO', valor: '2 SEMENTES OU 4 SEMENTINHAS' },
-  { nome: 'FRANGO+QUEIJO', valor: '2 SEMENTES OU 4 SEMENTINHAS' },
-  { nome: 'CHOCOLATE', valor: '2 SEMENTES OU 4 SEMENTINHAS' },
-  { nome: 'CARNE MOIDA', valor: '2 SEMENTES OU 4 SEMENTINHAS' },
+  { nome: 'CARNE DE SOL+QUEIJO', valor: '2' },
+  { nome: '2 QUEIJOS', valor: '2' },
+  { nome: 'FRANGO', valor: '2' },
+  { nome: 'FRANGO+QUEIJO', valor: '2' },
+  { nome: 'CHOCOLATE', valor: '2' },
+  { nome: 'CARNE MOIDA', valor: '2' },
 ];
 
 export default function AdicionarSaborScreen() {
-  const [nome, setNome] = useState('');
-  const [valor, setValor] = useState('');
   const [sabores, setSabores] = useState<{ nome: string; valor: string }[]>([]);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
-  const navigation = useNavigation();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editData, setEditData] = useState<{ nome: string; valor: string } | null>(null);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [saborParaExcluir, setSaborParaExcluir] = useState<{ nome: string; index: number } | null>(null);
 
   useEffect(() => {
     async function inicializarSabores() {
@@ -35,100 +37,166 @@ export default function AdicionarSaborScreen() {
 
   async function carregarSabores() {
     const data = await AsyncStorage.getItem(CARDAPIO_KEY);
-    setSabores(data ? JSON.parse(data) : []);
+    if (data) {
+      setSabores(JSON.parse(data));
+    } else {
+      setSabores([]);
+    }
   }
 
-  async function adicionarOuEditarSabor() {
-    if (!nome.trim() || !valor.trim()) {
-      Alert.alert('Preencha todos os campos!');
-      return;
-    }
-    const novoSabor = { nome: nome.trim().toUpperCase(), valor: valor.trim() };
+  async function handleSaveSabor(nome: string, valor: string) {
+    const novoSabor = { nome, valor };
     let cardapio = [...sabores];
-    if (editIndex !== null) {
-      cardapio[editIndex] = novoSabor;
+
+    if (editData) {
+      // Editando sabor existente
+      const index = cardapio.findIndex(s => s.nome === editData.nome);
+      if (index !== -1) {
+        cardapio[index] = novoSabor;
+      }
     } else {
+      // Adicionando novo sabor
       cardapio.push(novoSabor);
     }
+
     await AsyncStorage.setItem(CARDAPIO_KEY, JSON.stringify(cardapio));
-    setNome('');
-    setValor('');
-    setEditIndex(null);
     carregarSabores();
-    Alert.alert(editIndex !== null ? 'Sabor editado!' : 'Sabor adicionado!');
   }
 
-  function preencherParaEditar(index: number) {
-    setNome(sabores[index].nome);
-    setValor(sabores[index].valor);
-    setEditIndex(index);
+  function handleEditSabor(sabor: { nome: string; valor: string }) {
+    setEditData(sabor);
+    setModalVisible(true);
   }
 
-  async function excluirSabor(index: number) {
+  function handleAddSabor() {
+    setEditData(null);
+    setModalVisible(true);
+  }
+
+  function solicitarExclusao(sabor: { nome: string; valor: string }, index: number) {
+    setSaborParaExcluir({ nome: sabor.nome, index });
+    setConfirmModalVisible(true);
+  }
+
+  async function confirmarExclusao() {
+    if (!saborParaExcluir) return;
+    
     let cardapio = [...sabores];
-    cardapio.splice(index, 1);
+    cardapio.splice(saborParaExcluir.index, 1);
     await AsyncStorage.setItem(CARDAPIO_KEY, JSON.stringify(cardapio));
     carregarSabores();
-    setEditIndex(null);
-    setNome('');
-    setValor('');
-    Alert.alert('Sabor excluído!');
+    
+    setSaborParaExcluir(null);
+    setConfirmModalVisible(false);
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={styles.container}>
-        <StatusBar backgroundColor="#1976d2" barStyle="light-content" />
-        <TextInput
-          style={styles.input}
-          placeholder="Nome do sabor"
-          value={nome}
-          onChangeText={setNome}
-          autoCapitalize="characters"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Valor (ex: 2 sementes)"
-          value={valor}
-          onChangeText={setValor}
-        />
-        <TouchableOpacity style={styles.button} onPress={adicionarOuEditarSabor}>
-          <Text style={styles.buttonText}>{editIndex !== null ? 'Salvar Edição' : 'Adicionar'}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+      <StatusBar backgroundColor="#1976d2" barStyle="light-content" />
+
+
+      {/* Botão Adicionar */}
+      <View style={styles.addButtonContainer}>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddSabor}>
+          <Icon name="add" size={24} color="#fff" />
+          <Text style={styles.addButtonText}>Adicionar Novo Sabor</Text>
         </TouchableOpacity>
-        <FlatList
-          data={sabores}
-          keyExtractor={(_, idx) => `sabor-${idx}`}
-          style={{ width: '100%', marginTop: 24 }}
-          renderItem={({ item, index }) => (
-            <View style={styles.saborItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.saborNome}>{item.nome}</Text>
-                <Text style={styles.saborValor}>{item.valor}</Text>
-              </View>
-              <TouchableOpacity style={styles.editButton} onPress={() => preencherParaEditar(index)}>
-                <Text style={styles.editButtonText}>Editar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteButton} onPress={() => excluirSabor(index)}>
-                <Text style={styles.deleteButtonText}>Excluir</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
       </View>
+
+      {/* Lista */}
+      <FlatList
+        data={sabores}
+        keyExtractor={(_, idx) => `sabor-${idx}`}
+        contentContainerStyle={{ padding: 16 }}
+        renderItem={({ item, index }) => (
+          <View style={styles.card}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.saborNome}>{item.nome}</Text>
+              <Text style={styles.saborValor}>{item.valor} Sementes</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#2196f3' }]}
+              onPress={() => handleEditSabor(item)}
+            >
+              <Icon name="edit" size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#f44336' }]}
+              onPress={() => solicitarExclusao(item, index)}
+            >
+              <Icon name="delete" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+
+      {/* Modal de Sabor */}
+      <SaborModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSaveSabor}
+        editData={editData}
+      />
+
+      {/* Modal de Confirmação */}
+      <ConfirmModal
+        visible={confirmModalVisible}
+        onClose={() => setConfirmModalVisible(false)}
+        onConfirm={confirmarExclusao}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir o sabor "${saborParaExcluir?.nome}"?\n\nEsta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        type="danger"
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f7f7f7', padding: 16 },
-  input: { width: '78%', backgroundColor: '#fff', borderRadius: 8, padding: 16, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#ccc' },
-  button: { backgroundColor: '#4caf50', padding: 16, borderRadius: 8, alignItems: 'center', width: '45%' },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  saborItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 12, marginHorizontal: 8, borderWidth: 1, borderColor: '#ccc' },
-  saborNome: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  saborValor: { fontSize: 14, color: '#666' },
-  editButton: { backgroundColor: '#2196f3', padding: 8, borderRadius: 6, marginLeft: 8 },
-  editButtonText: { color: '#fff', fontWeight: 'bold' },
-  deleteButton: { backgroundColor: '#f44336', padding: 8, borderRadius: 6, marginLeft: 8 },
-  deleteButtonText: { color: '#fff', fontWeight: 'bold' },
-}); 
+  addButtonContainer: {
+    padding: 16,
+  },
+  addButton: {
+    flexDirection: 'row',
+    backgroundColor: '#4caf50',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    elevation: 3,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2
+  },
+  saborNome: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  saborValor: {
+    fontSize: 14,
+    color: '#666'
+  },
+  actionButton: {
+    padding: 8,
+    borderRadius: 6,
+    marginLeft: 8
+  }
+});

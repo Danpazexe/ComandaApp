@@ -86,19 +86,19 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
               onPress={() => navigation.navigate('EditarComanda')}
               color={styles.buttonEdit}
             >
-              Editar Comanda Fechada
-            </AnimatedButton>
-            <AnimatedButton
-              onPress={() => navigation.navigate('Relatorio')}
-              color={styles.buttonSecondary}
-            >
-              Relatório de Saída
+              Editar Comanda
             </AnimatedButton>
             <AnimatedButton
               onPress={() => navigation.navigate('AdicionarSabor')}
               color={styles.buttonAdd}
             >
-              Novo/Editar Sabor
+              Gerenciar Cardápio
+            </AnimatedButton>
+            <AnimatedButton
+              onPress={() => navigation.navigate('Relatorio')}
+              color={styles.buttonSecondary}
+            >
+              Relatório
             </AnimatedButton>
           </View>
         </View>

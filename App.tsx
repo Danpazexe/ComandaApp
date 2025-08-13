@@ -22,11 +22,59 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Home">
-          <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Comanda" component={ComandaScreen} options={{ title: 'Comanda', headerStyle: { backgroundColor: '#ffb300' }, headerTintColor: '#fff' }} />
-          <Stack.Screen name="Relatorio" component={RelatorioScreen} options={{ title: 'Relatório', headerStyle: { backgroundColor: '#4caf50' }, headerTintColor: '#fff' }} />
-          <Stack.Screen name="AdicionarSabor" component={AdicionarSaborScreen} options={{ title: 'Adicionar Sabor', headerStyle: { backgroundColor: '#1976d2' }, headerTintColor: '#fff' }} />
-          <Stack.Screen name="EditarComanda" component={EditarComandaScreen} options={{ title: 'Editar Comanda', headerStyle: { backgroundColor: '#9c27b0' }, headerTintColor: '#fff' }} />
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{
+              headerShown: false,
+              headerStyle: { backgroundColor: '#ffb300' },
+              headerTintColor: '#fff',
+            }}
+          />
+          <Stack.Screen
+            name="Comanda"
+            component={ComandaScreen}
+            options={{
+              title: 'Comanda',
+              headerStyle: { backgroundColor: '#ffb300' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' },
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen
+            name="Relatorio"
+            component={RelatorioScreen}
+            options={{
+              title: 'Relatório',
+              headerStyle: { backgroundColor: '#4caf50' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' },
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen
+            name="AdicionarSabor"
+            component={AdicionarSaborScreen}
+            options={{
+              title: 'Gerenciar Cardápio',
+              headerStyle: { backgroundColor: '#1976d2' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' },
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen
+            name="EditarComanda"
+            component={EditarComandaScreen}
+            options={{
+              title: 'Editar Comanda',
+              headerStyle: { backgroundColor: '#9c27b0' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' },
+              headerTitleAlign: 'center',
+            }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
