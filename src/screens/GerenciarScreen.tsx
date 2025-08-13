@@ -17,7 +17,7 @@ const SABORES_INICIAIS = [
   { nome: 'CARNE MOIDA', valor: '2' },
 ];
 
-export default function AdicionarSaborScreen() {
+export default function GerenciarScreen() {
   const [sabores, setSabores] = useState<{ nome: string; valor: string }[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editData, setEditData] = useState<{ nome: string; valor: string } | null>(null);

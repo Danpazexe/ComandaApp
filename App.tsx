@@ -8,12 +8,12 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import ComandaScreen from './src/screens/ComandaScreen';
+import EditarScreen from './src/screens/EditarScreen';
+import GerenciarScreen from './src/screens/GerenciarScreen';
 import RelatorioScreen from './src/screens/RelatorioScreen';
-import AdicionarSaborScreen from './src/screens/AdicionarSaborScreen';
-import EditarComandaScreen from './src/screens/EditarComandaScreen';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Stack = createNativeStackNavigator();
 
@@ -55,7 +55,7 @@ export default function App() {
           />
           <Stack.Screen
             name="AdicionarSabor"
-            component={AdicionarSaborScreen}
+            component={GerenciarScreen}
             options={{
               title: 'Gerenciar Cardápio',
               headerStyle: { backgroundColor: '#1976d2' },
@@ -66,8 +66,8 @@ export default function App() {
           />
           <Stack.Screen
             name="EditarComanda"
-            component={EditarComandaScreen}
-            options={{
+            component={EditarScreen}
+                        options={{
               title: 'Editar Comanda',
               headerStyle: { backgroundColor: '#9c27b0' },
               headerTintColor: '#fff',
