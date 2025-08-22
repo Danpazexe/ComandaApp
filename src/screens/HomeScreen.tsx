@@ -100,6 +100,12 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
             >
               Relatório
             </AnimatedButton>
+            <AnimatedButton
+              onPress={() => navigation.navigate('CozinhaMonitor')}
+              color={styles.buttonCozinha}
+            >
+              Monitor da Cozinha
+            </AnimatedButton>
           </View>
         </View>
       </View>
@@ -186,6 +192,19 @@ const styles = StyleSheet.create({
   },
   buttonEdit: {
     backgroundColor: '#9c27b0',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    width: '90%',
+    maxWidth: 340,
+    alignItems: 'center',
+    marginBottom: 18,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  buttonCozinha: {
+    backgroundColor: '#ff6b35',
     paddingVertical: 18,
     paddingHorizontal: 32,
     borderRadius: 10,

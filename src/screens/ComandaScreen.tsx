@@ -10,6 +10,8 @@ import {
   StatusBar,
   useWindowDimensions,
   Alert,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { registrarVenda } from './RelatorioScreen';
@@ -17,6 +19,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { FirestoreService } from '../services/firestoreService';
+import { Item } from '../types/Comanda';
 
 const CARDAPIO_KEY = 'cardapio_dinamico';
 const COMANDA_NUM_KEY = 'comanda_numero_atual';
@@ -24,16 +28,16 @@ const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
-export default function ComandaScreen({ navigation, route }: Props) {
-  const [itens, setItens] = useState<{ nome: string; quantidade: number }[]>(
-    [],
-  );
+export default function ComandaScreen({ route }: Props) {
+  const [itens, setItens] = useState<Item[]>([]);
   const [cardapio, setCardapio] = useState<{ nome: string; valor: string }[]>(
     [],
   );
   const [fadeAnims, setFadeAnims] = useState<Animated.Value[]>([]);
   const [numeroComanda, setNumeroComanda] = useState<number | null>(null);
   const [totalSementes, setTotalSementes] = useState(0);
+  const [nomeCliente, setNomeCliente] = useState<string>('');
+  const [isEnviando, setIsEnviando] = useState(false);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height && width > 700;
   const isFocused = useIsFocused();
@@ -51,11 +55,20 @@ export default function ComandaScreen({ navigation, route }: Props) {
     if (route?.params?.comandaParaEditar) {
       setItens(route.params.comandaParaEditar.itens);
       setNumeroComanda(route.params.comandaParaEditar.numero);
+      setNomeCliente(route.params.comandaParaEditar.nomeCliente || '');
     } else {
       async function buscarNumeroComanda() {
-        let numAtual = await AsyncStorage.getItem(COMANDA_NUM_KEY);
-        let numero = numAtual ? parseInt(numAtual, 10) : 1;
-        setNumeroComanda(numero);
+        try {
+          // Usar numeração sequencial do Firestore
+          const proximoNumero = await FirestoreService.gerarProximoNumero();
+          setNumeroComanda(proximoNumero);
+        } catch (error) {
+          console.error('Erro ao buscar próximo número:', error);
+          // Fallback para AsyncStorage
+          let numAtual = await AsyncStorage.getItem(COMANDA_NUM_KEY);
+          let numero = numAtual ? parseInt(numAtual, 10) : 1;
+          setNumeroComanda(numero);
+        }
       }
       if (isFocused) buscarNumeroComanda();
     }
@@ -134,66 +147,107 @@ export default function ComandaScreen({ navigation, route }: Props) {
       return;
     }
     
+    setIsEnviando(true);
+    console.log('🚀 Iniciando processo de fechar comanda...');
+    
     const itensParaRegistrar: string[] = [];
     itens.forEach(i => {
       for (let j = 0; j < i.quantidade; j++) itensParaRegistrar.push(i.nome);
     });
 
-    if (route?.params?.comandaParaEditar) {
-      // EDIÇÃO: subtrai os antigos e soma os novos manualmente
-      let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
-      let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
-      // Subtrai antigos
-      route.params.comandaParaEditar.itens.forEach(
-        (item: { nome: string; quantidade: number }) => {
-          if (vendas[item.nome]) {
-            vendas[item.nome] -= item.quantidade;
-            if (vendas[item.nome] < 0) vendas[item.nome] = 0;
-          }
-        },
-      );
-      // Soma novos
-      itens.forEach(i => {
-        vendas[i.nome] = (vendas[i.nome] || 0) + i.quantidade;
-      });
-      await AsyncStorage.setItem('relatorio_vendas', JSON.stringify(vendas));
-    } else {
-      // NOVA: usa registrarVenda normalmente
-      registrarVenda(itensParaRegistrar);
-    }
-
-    ToastAndroid.show('Comanda finalizada!', ToastAndroid.SHORT);
-    // Salvar ou atualizar comanda fechada
-    if (numeroComanda !== null) {
-      const comandaFechada = {
-        numero: numeroComanda,
-        itens: [...itens],
-        data: new Date().toISOString(),
-        totalSementes: totalSementes,
-      };
-      let historico = await AsyncStorage.getItem('comandas_fechadas');
-      let lista = historico ? JSON.parse(historico) : [];
-      const idx = lista.findIndex((c: any) => c.numero === numeroComanda);
-      if (route?.params?.comandaParaEditar && idx !== -1) {
-        // Atualiza a comanda existente
-        lista[idx] = comandaFechada;
+    try {
+      if (route?.params?.comandaParaEditar) {
+        console.log('📝 Editando comanda existente...');
+        // EDIÇÃO: Atualizar comanda existente no Firestore
+        if (route.params.comandaParaEditar.id) {
+          await FirestoreService.atualizarComanda(
+            route.params.comandaParaEditar.id,
+            itens,
+            totalSementes,
+            nomeCliente
+          );
+        }
+        
+        // Atualizar relatório de vendas
+        let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
+        let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
+        // Subtrai antigos
+        route.params.comandaParaEditar.itens.forEach(
+          (item: { nome: string; quantidade: number }) => {
+            if (vendas[item.nome]) {
+              vendas[item.nome] -= item.quantidade;
+              if (vendas[item.nome] < 0) vendas[item.nome] = 0;
+            }
+          },
+        );
+        // Soma novos
+        itens.forEach(i => {
+          vendas[i.nome] = (vendas[i.nome] || 0) + i.quantidade;
+        });
+        await AsyncStorage.setItem('relatorio_vendas', JSON.stringify(vendas));
       } else {
-        // Adiciona nova comanda
-        lista.push(comandaFechada);
+        console.log('🆕 Criando nova comanda...');
+        // NOVA: Criar comanda no Firestore
+        if (numeroComanda !== null) {
+          await FirestoreService.criarComanda(numeroComanda, itens, totalSementes, nomeCliente);
+        }
+        
+        // Registrar vendas
+        registrarVenda(itensParaRegistrar);
       }
-      await AsyncStorage.setItem('comandas_fechadas', JSON.stringify(lista));
-    }
-    setItens([]);
-    if (!route?.params?.comandaParaEditar && numeroComanda !== null) {
-      // Só incrementa o número e o total se for nova comanda
-      const proximoNumero = numeroComanda + 1;
-      await AsyncStorage.setItem(COMANDA_NUM_KEY, proximoNumero.toString());
 
-      let atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
-      let total = atendidas ? parseInt(atendidas, 10) + 1 : 1;
-      await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, total.toString());
+      console.log('✅ Comanda salva com sucesso!');
+      ToastAndroid.show('Comanda enviada para a cozinha!', ToastAndroid.SHORT);
+      
+      // Salvar no histórico local também
+      if (numeroComanda !== null) {
+        const comandaFechada = {
+          numero: numeroComanda,
+          nomeCliente,
+          itens: [...itens],
+          data: new Date().toISOString(),
+          totalSementes: totalSementes,
+        };
+        let historico = await AsyncStorage.getItem('comandas_fechadas');
+        let lista = historico ? JSON.parse(historico) : [];
+        const idx = lista.findIndex((c: any) => c.numero === numeroComanda);
+        if (route?.params?.comandaParaEditar && idx !== -1) {
+          // Atualiza a comanda existente
+          lista[idx] = comandaFechada;
+        } else {
+          // Adiciona nova comanda
+          lista.push(comandaFechada);
+        }
+        await AsyncStorage.setItem('comandas_fechadas', JSON.stringify(lista));
+      }
+      
+      if (!route?.params?.comandaParaEditar && numeroComanda !== null) {
+        // Só incrementa o total se for nova comanda
+        let atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
+        let total = atendidas ? parseInt(atendidas, 10) + 1 : 1;
+        await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, total.toString());
+      }
+      
+      console.log('✅ Comanda enviada com sucesso!');
+      
+      // Limpar dados e preparar para nova comanda
+      setItens([]);
+      setNomeCliente('');
+      
+      // Buscar próximo número para nova comanda
+      try {
+        const proximoNumero = await FirestoreService.gerarProximoNumero();
+        setNumeroComanda(proximoNumero);
+      } catch (error) {
+        console.error('Erro ao buscar próximo número:', error);
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao salvar comanda:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a comanda. Tente novamente.');
+    } finally {
+      setIsEnviando(false);
     }
-    navigation.popToTop();
   }
 
   return (
@@ -246,6 +300,20 @@ export default function ComandaScreen({ navigation, route }: Props) {
                 <Text style={styles.totalText}>Total: {totalSementes} Sementes</Text>
               </View>
             )}
+          </View>
+
+          {/* Campo Nome do Cliente */}
+          <View style={styles.clienteSection}>
+            <View style={styles.clienteInputContainer}>
+              <Icon name="person" size={20} color="#666" style={styles.clienteIcon} />
+              <TextInput
+                style={styles.clienteInput}
+                placeholder="Nome do cliente (opcional)"
+                value={nomeCliente}
+                onChangeText={setNomeCliente}
+                placeholderTextColor="#999"
+              />
+            </View>
           </View>
           
           <FlatList
@@ -302,13 +370,22 @@ export default function ComandaScreen({ navigation, route }: Props) {
             )}
             
             <TouchableOpacity 
-              style={[styles.finishButton, itens.length === 0 && styles.finishButtonDisabled]} 
+              style={[styles.finishButton, (itens.length === 0 || isEnviando) && styles.finishButtonDisabled]} 
               onPress={fecharComanda}
-              disabled={itens.length === 0}
+              disabled={itens.length === 0 || isEnviando}
               activeOpacity={0.8}
             >
-              <Icon name="restaurant" size={20} color="#fff" />
-              <Text style={styles.finishButtonText}>Enviar Comanda</Text>
+              {isEnviando ? (
+                <>
+                  <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+                  <Text style={styles.finishButtonText}>Enviando...</Text>
+                </>
+              ) : (
+                <>
+                  <Icon name="restaurant" size={20} color="#fff" />
+                  <Text style={styles.finishButtonText}>Enviar Comanda</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -391,6 +468,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#4caf50',
+  },
+  clienteSection: {
+    marginBottom: 16,
+  },
+  clienteInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  clienteIcon: {
+    marginRight: 8,
+  },
+  clienteInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 8,
   },
   menuButton: {
     backgroundColor: '#ffb300',

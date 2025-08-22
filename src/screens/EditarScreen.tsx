@@ -8,10 +8,12 @@ import {
   StatusBar,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FirestoreService } from '../services/firestoreService';
 
 interface Item {
   nome: string;
@@ -28,6 +30,7 @@ export default function EditarScreen() {
   const [comandasFiltradas, setComandasFiltradas] = useState<ComandaFechada[]>([]);
   const [pesquisa, setPesquisa] = useState('');
   const [ordenacaoNumero, setOrdenacaoNumero] = useState<'crescente' | 'decrescente'>('crescente');
+  const [isZerando, setIsZerando] = useState(false);
   const navigation = useNavigation<NavigationProp<any>>();
 
   const filtrarEOrdenarComandas = useCallback(() => {
@@ -157,19 +160,54 @@ export default function EditarScreen() {
   function zerarTudo() {
     Alert.alert(
       'Zerar Tudo',
-      'Tem certeza que deseja apagar todas as comandas, relatório e contador?',
+      'Tem certeza que deseja apagar todas as comandas do Firestore, relatório e contador?\n\nEsta ação não pode ser desfeita!',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Zerar',
+          text: 'Zerar Tudo',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.setItem('comandas_fechadas', JSON.stringify([]));
-            await AsyncStorage.setItem('relatorio_vendas', JSON.stringify({}));
-            await AsyncStorage.setItem('comandas_atendidas', '0');
-            await AsyncStorage.setItem('comanda_numero_atual', '1');
-            setComandas([]);
-            setPesquisa('');
+            try {
+              setIsZerando(true);
+              console.log('🚀 Iniciando processo de zerar tudo...');
+              
+              // Testar conexão com Firebase primeiro
+              console.log('🔍 Testando conexão com Firebase...');
+              const conexaoOk = await FirestoreService.testarConexao();
+              
+              if (!conexaoOk) {
+                throw new Error('Não foi possível conectar com o Firebase. Verifique sua conexão com a internet.');
+              }
+              
+              // Apagar todas as comandas do Firestore
+              console.log('🗑️ Deletando comandas do Firestore...');
+              await FirestoreService.zerarTodasComandas();
+              
+              // Limpar dados locais
+              console.log('🧹 Limpando dados locais...');
+              await AsyncStorage.setItem('comandas_fechadas', JSON.stringify([]));
+              await AsyncStorage.setItem('relatorio_vendas', JSON.stringify({}));
+              await AsyncStorage.setItem('comandas_atendidas', '0');
+              await AsyncStorage.setItem('comanda_numero_atual', '1');
+              
+              // Atualizar estado local
+              setComandas([]);
+              setPesquisa('');
+              
+              console.log('✅ Processo de zerar tudo concluído com sucesso!');
+              Alert.alert(
+                '✅ Sucesso!', 
+                'Todas as comandas foram apagadas com sucesso!\n\n• Comandas do Firestore: Deletadas\n• Histórico local: Limpo\n• Relatório de vendas: Zerado\n• Contador de comandas: Resetado'
+              );
+            } catch (error) {
+              console.error('❌ Erro ao zerar comandas:', error);
+              Alert.alert(
+                '❌ Erro', 
+                `Não foi possível apagar todas as comandas.\n\nErro: ${error instanceof Error ? error.message : 'Erro desconhecido'}\n\nTente novamente ou verifique sua conexão com a internet.`
+              );
+            } finally {
+              setIsZerando(false);
+            }
           },
         },
       ],
@@ -283,8 +321,19 @@ export default function EditarScreen() {
           }
         />
         
-        <TouchableOpacity style={styles.buttonZerar} onPress={zerarTudo}>
-          <Text style={styles.buttonZerarText}>Zerar Todas as Comandas</Text>
+        <TouchableOpacity 
+          style={[styles.buttonZerar, isZerando && styles.buttonZerarDisabled]} 
+          onPress={zerarTudo}
+          disabled={isZerando}
+        >
+          {isZerando ? (
+            <>
+              <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+              <Text style={styles.buttonZerarText}>Zerando...</Text>
+            </>
+          ) : (
+            <Text style={styles.buttonZerarText}>Zerar Todas as Comandas</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -514,6 +563,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
+  },
+  buttonZerarDisabled: {
+    backgroundColor: '#6c757d',
+    shadowColor: '#6c757d',
+    opacity: 0.7,
   },
   buttonZerarText: { 
     color: '#ffffff', 

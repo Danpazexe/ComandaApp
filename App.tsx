@@ -14,6 +14,8 @@ import ComandaScreen from './src/screens/ComandaScreen';
 import EditarScreen from './src/screens/EditarScreen';
 import GerenciarScreen from './src/screens/GerenciarScreen';
 import RelatorioScreen from './src/screens/RelatorioScreen';
+import CozinhaMonitorScreen from './src/screens/CozinhaMonitorScreen';
+import './src/config/firebase';
 
 const Stack = createNativeStackNavigator();
 
@@ -67,9 +69,20 @@ export default function App() {
           <Stack.Screen
             name="EditarComanda"
             component={EditarScreen}
-                        options={{
+            options={{
               title: 'Editar Comanda',
               headerStyle: { backgroundColor: '#9c27b0' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' },
+              headerTitleAlign: 'center',
+            }}
+          />
+          <Stack.Screen
+            name="CozinhaMonitor"
+            component={CozinhaMonitorScreen}
+            options={{
+              title: 'Monitor da Cozinha',
+              headerStyle: { backgroundColor: '#ff6b35' },
               headerTintColor: '#fff',
               headerTitleStyle: { fontWeight: 'bold' },
               headerTitleAlign: 'center',

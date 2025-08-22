@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "778181898191",
+    "project_id": "comandaapp-797db",
+    "storage_bucket": "comandaapp-797db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:778181898191:android:697bc82440b7aebbde2cba",
+        "android_client_info": {
+          "package_name": "com.ComandaApp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXKTFXq1CI_NiLpQOrVo-OzeK9enxIX4c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
