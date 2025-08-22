@@ -315,19 +315,4 @@ export class FirestoreService {
       throw error;
     }
   }
-
-  // Método de teste para verificar se o Firebase está funcionando
-  static async testarConexao(): Promise<boolean> {
-    try {
-      console.log('🔍 Testando conexão com Firebase...');
-      
-      // Tentar acessar uma coleção que não existe (só para testar conexão)
-      const testDoc = await firestore().collection('test_connection').doc('test').get();
-      console.log('✅ Conexão com Firebase OK');
-      return true;
-    } catch (error) {
-      console.error('❌ Erro na conexão com Firebase:', error);
-      return false;
-    }
-  }
 }

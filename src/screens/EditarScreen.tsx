@@ -171,14 +171,6 @@ export default function EditarScreen() {
               setIsZerando(true);
               console.log('🚀 Iniciando processo de zerar tudo...');
               
-              // Testar conexão com Firebase primeiro
-              console.log('🔍 Testando conexão com Firebase...');
-              const conexaoOk = await FirestoreService.testarConexao();
-              
-              if (!conexaoOk) {
-                throw new Error('Não foi possível conectar com o Firebase. Verifique sua conexão com a internet.');
-              }
-              
               // Apagar todas as comandas do Firestore
               console.log('🗑️ Deletando comandas do Firestore...');
               await FirestoreService.zerarTodasComandas();
