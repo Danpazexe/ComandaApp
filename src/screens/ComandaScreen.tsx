@@ -12,19 +12,14 @@ import {
   Alert,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { registrarVenda } from './RelatorioScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { FirestoreService } from '../services/firestoreService';
 import { Item } from '../types/Comanda';
-
-const CARDAPIO_KEY = 'cardapio_dinamico';
-const COMANDA_NUM_KEY = 'comanda_numero_atual';
-const COMANDAS_ATENDIDAS_KEY = 'comandas_atendidas';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
@@ -39,14 +34,61 @@ export default function ComandaScreen({ route }: Props) {
   const [nomeCliente, setNomeCliente] = useState<string>('');
   const [isEnviando, setIsEnviando] = useState(false);
   const { width, height } = useWindowDimensions();
-  const isLandscape = width > height && width > 700;
   const isFocused = useIsFocused();
+
+  // Responsive breakpoints
+  const isLandscape = width > height && width > 700;
+  const isTablet = width >= 768;
+  const isLargeTablet = width >= 1024;
+  const isMediumPhone = width >= 375 && width < 414;
+  const isLargePhone = width >= 414 && width < 768;
+
+  // Dynamic sizing based on screen dimensions
+  const getResponsiveSize = (small: number, medium: number, large: number, tablet: number) => {
+    if (isLargeTablet) return tablet;
+    if (isTablet) return large;
+    if (isLargePhone) return large;
+    if (isMediumPhone) return medium;
+    return small;
+  };
+
+  // Dynamic spacing based on screen size
+  const getSpacing = (small: number, medium: number, large: number, tablet: number) => {
+    if (isLargeTablet) return tablet;
+    if (isTablet) return large;
+    if (isLandscape) return medium;
+    return small;
+  };
+
+  // Dynamic padding based on screen size
+  const getPadding = (small: number, medium: number, large: number, tablet: number) => {
+    if (isLargeTablet) return tablet;
+    if (isTablet) return large;
+    if (isLandscape) return medium;
+    return small;
+  };
+
+  // Dynamic font size based on screen size
+  const getFontSize = (small: number, medium: number, large: number, tablet: number) => {
+    if (isLargeTablet) return tablet;
+    if (isTablet) return large;
+    if (isLandscape) return medium;
+    return small;
+  };
 
   useEffect(() => {
     async function carregarCardapio() {
-      const data = await AsyncStorage.getItem(CARDAPIO_KEY);
-      if (data) setCardapio(JSON.parse(data));
-      else setCardapio([]);
+      try {
+        // Inicializar cardápio se necessário
+        await FirestoreService.inicializarCardapio();
+        
+        // Carregar cardápio do Firebase
+        const cardapioFirebase = await FirestoreService.buscarCardapio();
+        setCardapio(cardapioFirebase);
+      } catch (error) {
+        console.error('Erro ao carregar cardápio:', error);
+        setCardapio([]);
+      }
     }
     carregarCardapio();
   }, []);
@@ -64,10 +106,8 @@ export default function ComandaScreen({ route }: Props) {
           setNumeroComanda(proximoNumero);
         } catch (error) {
           console.error('Erro ao buscar próximo número:', error);
-          // Fallback para AsyncStorage
-          let numAtual = await AsyncStorage.getItem(COMANDA_NUM_KEY);
-          let numero = numAtual ? parseInt(numAtual, 10) : 1;
-          setNumeroComanda(numero);
+          // Fallback para número 1
+          setNumeroComanda(1);
         }
       }
       if (isFocused) buscarNumeroComanda();
@@ -168,23 +208,8 @@ export default function ComandaScreen({ route }: Props) {
           );
         }
         
-        // Atualizar relatório de vendas
-        let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
-        let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
-        // Subtrai antigos
-        route.params.comandaParaEditar.itens.forEach(
-          (item: { nome: string; quantidade: number }) => {
-            if (vendas[item.nome]) {
-              vendas[item.nome] -= item.quantidade;
-              if (vendas[item.nome] < 0) vendas[item.nome] = 0;
-            }
-          },
-        );
-        // Soma novos
-        itens.forEach(i => {
-          vendas[i.nome] = (vendas[i.nome] || 0) + i.quantidade;
-        });
-        await AsyncStorage.setItem('relatorio_vendas', JSON.stringify(vendas));
+        // Não precisa mais atualizar relatório manualmente para edição
+        // O relatório será baseado nas comandas do Firebase
       } else {
         console.log('🆕 Criando nova comanda...');
         // NOVA: Criar comanda no Firestore
@@ -192,40 +217,16 @@ export default function ComandaScreen({ route }: Props) {
           await FirestoreService.criarComanda(numeroComanda, itens, totalSementes, nomeCliente);
         }
         
-        // Registrar vendas
-        registrarVenda(itensParaRegistrar);
+        // Registrar vendas no Firebase
+        await FirestoreService.registrarVendas(itensParaRegistrar);
       }
 
       console.log('✅ Comanda salva com sucesso!');
       ToastAndroid.show('Comanda enviada para a cozinha!', ToastAndroid.SHORT);
       
-      // Salvar no histórico local também
-      if (numeroComanda !== null) {
-        const comandaFechada = {
-          numero: numeroComanda,
-          nomeCliente,
-          itens: [...itens],
-          data: new Date().toISOString(),
-          totalSementes: totalSementes,
-        };
-        let historico = await AsyncStorage.getItem('comandas_fechadas');
-        let lista = historico ? JSON.parse(historico) : [];
-        const idx = lista.findIndex((c: any) => c.numero === numeroComanda);
-        if (route?.params?.comandaParaEditar && idx !== -1) {
-          // Atualiza a comanda existente
-          lista[idx] = comandaFechada;
-        } else {
-          // Adiciona nova comanda
-          lista.push(comandaFechada);
-        }
-        await AsyncStorage.setItem('comandas_fechadas', JSON.stringify(lista));
-      }
-      
+      // Incrementar contador de comandas atendidas se for nova comanda
       if (!route?.params?.comandaParaEditar && numeroComanda !== null) {
-        // Só incrementa o total se for nova comanda
-        let atendidas = await AsyncStorage.getItem(COMANDAS_ATENDIDAS_KEY);
-        let total = atendidas ? parseInt(atendidas, 10) + 1 : 1;
-        await AsyncStorage.setItem(COMANDAS_ATENDIDAS_KEY, total.toString());
+        await FirestoreService.incrementarComandasAtendidas();
       }
       
       console.log('✅ Comanda enviada com sucesso!');
@@ -253,61 +254,158 @@ export default function ComandaScreen({ route }: Props) {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View
-        style={[styles.container, isLandscape && styles.containerLandscape]}
+        style={[
+          styles.container, 
+          isLandscape && styles.containerLandscape,
+          isTablet && styles.containerTablet
+        ]}
       >
         <StatusBar backgroundColor="#ffb300" barStyle="light-content" />
         
         {/* Coluna esquerda: Cardápio */}
-        <View style={[styles.col, isLandscape && styles.colLeft]}>
+        <View style={[
+          styles.col, 
+          styles.colLeft,
+          isLandscape && styles.colLeftLandscape,
+          isTablet && styles.colLeftTablet
+        ]}>
           <FlatList
             data={cardapio}
             keyExtractor={item => item.nome}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.menuButton}
+                style={[
+                  styles.menuButton,
+                  {
+                    padding: getPadding(14, 16, 18, 20),
+                    marginBottom: getSpacing(10, 12, 14, 16),
+                    borderRadius: getResponsiveSize(16, 18, 20, 22),
+                  }
+                ]}
                 onPress={() => adicionarItem(item.nome)}
                 activeOpacity={0.8}
               >
                 <View style={styles.menuButtonContent}>
-                  <Text style={styles.menuButtonTitle}>{item.nome}</Text>
+                  <Text style={[
+                    styles.menuButtonTitle,
+                    { fontSize: getFontSize(14, 15, 16, 17) }
+                  ]}>
+                    {item.nome}
+                  </Text>
                   <View style={styles.menuButtonFooter}>
-                    <Icon name="attach-money" size={16} color="#fffde7" />
-                    <Text style={styles.menuButtonValor}>{item.valor} Sementes</Text>
+                    <Icon 
+                      name="attach-money" 
+                      size={getResponsiveSize(14, 16, 18, 20)} 
+                      color="#fffde7" 
+                    />
+                    <Text style={[
+                      styles.menuButtonValor,
+                      { fontSize: getFontSize(12, 13, 14, 15) }
+                    ]}>
+                      {item.valor} Sementes
+                    </Text>
                   </View>
                 </View>
-                <Icon name="add-circle" size={24} color="#fff" style={styles.addIcon} />
+                <Icon 
+                  name="add-circle" 
+                  size={getResponsiveSize(20, 24, 26, 28)} 
+                  color="#fff" 
+                  style={styles.addIcon} 
+                />
               </TouchableOpacity>
             )}
-            contentContainerStyle={{ paddingBottom: 16, paddingTop: 8 }}
+            contentContainerStyle={{ 
+              paddingBottom: getSpacing(12, 16, 18, 20), 
+              paddingTop: getSpacing(6, 8, 10, 12) 
+            }}
             showsVerticalScrollIndicator={false}
           />
         </View>
 
         {/* Coluna direita: Selecionados */}
-        <View style={[styles.col, styles.colRight]}>
+        <View style={[
+          styles.col, 
+          styles.colRight,
+          isLandscape && styles.colRightLandscape,
+          isTablet && styles.colRightTablet
+        ]}>
           {/* Número da Comanda, Título e Total na mesma linha */}
-          <View style={styles.headerSection}>
+          <View style={[
+            styles.headerSection,
+            isTablet && styles.headerSectionTablet
+          ]}>
             {numeroComanda !== null && (
-              <View style={styles.comandaInfo}>
-                <Icon name="confirmation-number" size={18} color="#e53935" />
-                <Text style={styles.comandaNumero}>Comanda Nº {numeroComanda}</Text>
+              <View style={[
+                styles.comandaInfo,
+                {
+                  padding: getPadding(8, 10, 12, 14),
+                  borderRadius: getResponsiveSize(10, 12, 14, 16),
+                }
+              ]}>
+                <Icon 
+                  name="confirmation-number" 
+                  size={getResponsiveSize(16, 18, 20, 22)} 
+                  color="#e53935" 
+                />
+                <Text style={[
+                  styles.comandaNumero,
+                  { fontSize: getFontSize(14, 16, 18, 20) }
+                ]}>
+                  Comanda Nº {numeroComanda}
+                </Text>
               </View>
             )}
             
             {itens.length > 0 && (
-              <View style={styles.totalContainer}>
-                <Icon name="account-balance-wallet" size={18} color="#4caf50" />
-                <Text style={styles.totalText}>Total: {totalSementes} Sementes</Text>
+              <View style={[
+                styles.totalContainer,
+                {
+                  padding: getPadding(8, 10, 12, 14), 
+                  borderRadius: getResponsiveSize(10, 12, 14, 16),
+                }
+              ]}>
+                <Icon 
+                  name="account-balance-wallet" 
+                  size={getResponsiveSize(16, 18, 20, 22)} 
+                  color="#4caf50" 
+                />
+                <Text style={[
+                  styles.totalText,
+                  { fontSize: getFontSize(14, 16, 18, 20) }
+                ]}>
+                  Total: {totalSementes} Sementes
+                </Text>
               </View>
             )}
           </View>
 
           {/* Campo Nome do Cliente */}
-          <View style={styles.clienteSection}>
-            <View style={styles.clienteInputContainer}>
-              <Icon name="person" size={20} color="#666" style={styles.clienteIcon} />
+          <View style={[
+            styles.clienteSection,
+            { marginBottom: getSpacing(12, 16, 18, 20) }
+          ]}>
+            <View style={[
+              styles.clienteInputContainer,
+              {
+                paddingHorizontal: getPadding(10, 12, 14, 16),
+                paddingVertical: getPadding(6, 8, 10, 12),
+                borderRadius: getResponsiveSize(10, 12, 14, 16),
+              }
+            ]}>
+              <Icon 
+                name="person" 
+                size={getResponsiveSize(18, 20, 22, 24)} 
+                color="#666" 
+                style={styles.clienteIcon} 
+              />
               <TextInput
-                style={styles.clienteInput}
+                style={[
+                  styles.clienteInput,
+                  { 
+                    fontSize: getFontSize(14, 16, 18, 20),
+                    paddingVertical: getPadding(6, 8, 10, 12),
+                  }
+                ]}
                 placeholder="Nome do cliente (opcional)"
                 value={nomeCliente}
                 onChangeText={setNomeCliente}
@@ -321,14 +419,42 @@ export default function ComandaScreen({ route }: Props) {
             keyExtractor={(_, index) => `item-${index}`}
             renderItem={({ item, index }) => (
               <Animated.View
-                style={[styles.itemRow, { opacity: fadeAnims[index] || 1 }]}
+                style={[
+                  styles.itemRow,
+                  {
+                    padding: getPadding(12, 16, 18, 20),
+                    borderRadius: getResponsiveSize(14, 16, 18, 20),
+                    marginBottom: getSpacing(6, 8, 10, 12),
+                  },
+                  { opacity: fadeAnims[index] || 1 }
+                ]}
               >
                 <View style={styles.itemInfo}>
-                  <Text style={styles.selectedItem}>{item.nome}</Text>
+                  <Text style={[
+                    styles.selectedItem,
+                    { 
+                      fontSize: getFontSize(13, 15, 16, 17),
+                      marginBottom: getSpacing(2, 3, 4, 5),
+                    }
+                  ]}>
+                    {item.nome}
+                  </Text>
                   <View style={styles.itemDetails}>
-                    <Icon name="shopping-cart" size={16} color="#666" />
-                    <Text style={styles.itemQuantidade}>x{item.quantidade}</Text>
-                    <Text style={styles.itemValor}>
+                    <Icon 
+                      name="shopping-cart" 
+                      size={getResponsiveSize(14, 16, 18, 20)} 
+                      color="#666" 
+                    />
+                    <Text style={[
+                      styles.itemQuantidade,
+                      { fontSize: getFontSize(11, 13, 14, 15) }
+                    ]}>
+                      x{item.quantidade}
+                    </Text>
+                    <Text style={[
+                      styles.itemValor,
+                      { fontSize: getFontSize(11, 13, 14, 15) }
+                    ]}>
                       {(() => {
                         const cardapioItem = cardapio.find(c => c.nome === item.nome);
                         return cardapioItem ? `${parseInt(cardapioItem.valor) * item.quantidade} Sementes` : '';
@@ -337,53 +463,127 @@ export default function ComandaScreen({ route }: Props) {
                   </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.removeButton}
+                  style={[
+                    styles.removeButton,
+                    {
+                      padding: getPadding(10, 12, 14, 16),
+                      borderRadius: getResponsiveSize(10, 12, 14, 16),
+                      marginLeft: getSpacing(10, 12, 14, 16),
+                    }
+                  ]}
                   onPress={() => removerItem(index)}
                   activeOpacity={0.8}
                 >
-                  <Icon name="remove" size={20} color="#fff" />
+                  <Icon 
+                    name="remove" 
+                    size={getResponsiveSize(18, 20, 22, 24)} 
+                    color="#fff" 
+                  />
                 </TouchableOpacity>
               </Animated.View>
             )}
-            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            ItemSeparatorComponent={() => <View style={{ height: getSpacing(6, 8, 10, 12) }} />}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Icon name="receipt-long" size={40} color="#ccc" />
-                <Text style={styles.emptyText}>Nenhum item selecionado</Text>
-                <Text style={styles.emptySubtext}>Toque nos itens do cardápio para adicionar</Text>
+              <View style={[
+                styles.emptyState,
+                { paddingVertical: getSpacing(20, 30, 35, 40) }
+              ]}>
+                <Icon 
+                  name="receipt-long" 
+                  size={getResponsiveSize(30, 40, 45, 50)} 
+                  color="#ccc" 
+                />
+                <Text style={[
+                  styles.emptyText,
+                  { fontSize: getFontSize(14, 16, 18, 20) }
+                ]}>
+                  Nenhum item selecionado
+                </Text>
+                <Text style={[
+                  styles.emptySubtext,
+                  { fontSize: getFontSize(11, 13, 14, 15) }
+                ]}>
+                  Toque nos itens do cardápio para adicionar
+                </Text>
               </View>
             }
           />
 
           {/* Botões de Ação */}
-          <View style={styles.actionButtons}>
+          <View style={[
+            styles.actionButtons,
+            { 
+              marginTop: getSpacing(8, 10, 12, 14),
+              gap: getSpacing(8, 10, 12, 14),
+            }
+          ]}>
             {itens.length > 0 && (
               <TouchableOpacity 
-                style={styles.clearButton} 
+                style={[
+                  styles.clearButton,
+                  {
+                    padding: getPadding(14, 16, 18, 20),
+                    borderRadius: getResponsiveSize(12, 14, 16, 18),
+                  }
+                ]} 
                 onPress={limparComanda}
                 activeOpacity={0.8}
               >
-                <Icon name="clear-all" size={20} color="#fff" />
-                <Text style={styles.clearButtonText}>Limpar</Text>
+                <Icon 
+                  name="clear-all" 
+                  size={getResponsiveSize(18, 20, 22, 24)} 
+                  color="#fff" 
+                />
+                <Text style={[
+                  styles.clearButtonText,
+                  { fontSize: getFontSize(13, 15, 16, 17) }
+                ]}>
+                  Limpar
+                </Text>
               </TouchableOpacity>
             )}
             
             <TouchableOpacity 
-              style={[styles.finishButton, (itens.length === 0 || isEnviando) && styles.finishButtonDisabled]} 
+              style={[
+                styles.finishButton,
+                {
+                  padding: getPadding(14, 16, 18, 20),
+                  borderRadius: getResponsiveSize(12, 14, 16, 18),
+                },
+                (itens.length === 0 || isEnviando) && styles.finishButtonDisabled
+              ]} 
               onPress={fecharComanda}
               disabled={itens.length === 0 || isEnviando}
               activeOpacity={0.8}
             >
               {isEnviando ? (
                 <>
-                  <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
-                  <Text style={styles.finishButtonText}>Enviando...</Text>
+                  <ActivityIndicator 
+                    size="small" 
+                    color="#ffffff" 
+                    style={{ marginRight: getSpacing(6, 8, 10, 12) }} 
+                  />
+                  <Text style={[
+                    styles.finishButtonText,
+                    { fontSize: getFontSize(13, 15, 16, 17) }
+                  ]}>
+                    Enviando...
+                  </Text>
                 </>
               ) : (
                 <>
-                  <Icon name="restaurant" size={20} color="#fff" />
-                  <Text style={styles.finishButtonText}>Enviar Comanda</Text>
+                  <Icon 
+                    name="restaurant" 
+                    size={getResponsiveSize(18, 20, 22, 24)} 
+                    color="#fff" 
+                  />
+                  <Text style={[
+                    styles.finishButtonText,
+                    { fontSize: getFontSize(13, 15, 16, 17) }
+                  ]}>
+                    Enviar Comanda
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -402,6 +602,9 @@ const styles = StyleSheet.create({
   containerLandscape: {
     flexDirection: 'row',
   },
+  containerTablet: {
+    paddingHorizontal: 16,
+  },
   col: {
     flex: 1,
     padding: 12,
@@ -409,7 +612,14 @@ const styles = StyleSheet.create({
   colLeft: {
     borderRightWidth: 1,
     borderRightColor: '#e9ecef',
-    maxWidth: 400,
+    maxWidth: 500,
+  },
+  colLeftLandscape: {
+    maxWidth: 450,
+  },
+  colLeftTablet: {
+    maxWidth: 1000,
+    padding: 10,
   },
   colRight: {
     flex: 1,
@@ -419,8 +629,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffb300',
     borderStyle: 'dashed',
-    
     margin: 10,
+    minWidth: 280,
+  },
+  colRightLandscape: {
+    flex: 0.8,
+    paddingLeft: 24,
+    margin: 12,
+  },
+  colRightTablet: {
+    paddingLeft: 28,
+    margin: 16,
+    borderRadius: 28,
   },
   headerSection: {
     flexDirection: 'row',
@@ -429,12 +649,14 @@ const styles = StyleSheet.create({
     gap: 12,
     justifyContent: 'space-between',
   },
+  headerSectionTablet: {
+    marginBottom: 16,
+    gap: 16,
+  },
   comandaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff5f5',
-    padding: 10,
-    borderRadius: 12,
     gap: 6,
     borderWidth: 2,
     borderColor: '#fed7d7',
@@ -443,9 +665,16 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#fed7d7',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+      },
+    }),
   },
   comandaNumero: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#e53935',
   },
@@ -453,8 +682,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f0f9ff',
-    padding: 10,
-    borderRadius: 12,
     gap: 6,
     borderWidth: 2,
     borderColor: '#4caf50',
@@ -463,9 +690,16 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#4caf50',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+      },
+    }),
   },
   totalText: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#4caf50',
   },
@@ -476,9 +710,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#e9ecef',
   },
@@ -487,15 +718,10 @@ const styles = StyleSheet.create({
   },
   clienteInput: {
     flex: 1,
-    fontSize: 16,
     color: '#333',
-    paddingVertical: 8,
   },
   menuButton: {
     backgroundColor: '#ffb300',
-    padding: 16,
-    borderRadius: 18,
-    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -506,13 +732,20 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderWidth: 1,
     borderColor: '#ff8f00',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#ffb300',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+      },
+    }),
   },
   menuButtonContent: {
     flex: 1,
   },
   menuButtonTitle: {
     color: '#fff',
-    fontSize: 15,
     fontWeight: 'bold',
     marginBottom: 3,
   },
@@ -523,7 +756,6 @@ const styles = StyleSheet.create({
   },
   menuButtonValor: {
     color: '#fffde7',
-    fontSize: 13,
     fontWeight: '600',
   },
   addIcon: {
@@ -534,21 +766,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#ffb300',
-    
   },
   itemInfo: {
     flex: 1,
   },
   selectedItem: {
-    fontSize: 15,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 3,
   },
   itemDetails: {
     flexDirection: 'row',
@@ -556,47 +783,35 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   itemQuantidade: {
-    fontSize: 13,
     color: '#666',
     fontWeight: '600',
   },
   itemValor: {
-    fontSize: 13,
     color: '#4caf50',
     fontWeight: '600',
   },
   removeButton: {
     backgroundColor: '#e53935',
-    padding: 12,
-    borderRadius: 12,
-    marginLeft: 12,
-    
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 30,
     gap: 8,
   },
   emptyText: {
-    fontSize: 16,
     color: '#666',
     fontWeight: '600',
   },
   emptySubtext: {
-    fontSize: 13,
     color: '#999',
     textAlign: 'center',
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 10,
   },
   clearButton: {
     flex: 1,
     backgroundColor: '#6c757d',
-    padding: 16,
-    borderRadius: 14,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -604,14 +819,11 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     color: '#fff',
-    fontSize: 15,
     fontWeight: 'bold',
   },
   finishButton: {
     flex: 2,
     backgroundColor: '#4caf50',
-    padding: 16,
-    borderRadius: 14,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -622,8 +834,6 @@ const styles = StyleSheet.create({
   },
   finishButtonText: {
     color: '#fff',
-    fontSize: 15,
     fontWeight: 'bold',
   },
-
 });

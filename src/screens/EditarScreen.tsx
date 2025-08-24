@@ -10,7 +10,6 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FirestoreService } from '../services/firestoreService';
@@ -20,9 +19,12 @@ interface Item {
   quantidade: number;
 }
 interface ComandaFechada {
+  id?: string;
   numero: number;
   itens: Item[];
   data: string;
+  nomeCliente?: string;
+  totalSementes?: number;
 }
 
 export default function EditarScreen() {
@@ -31,6 +33,7 @@ export default function EditarScreen() {
   const [pesquisa, setPesquisa] = useState('');
   const [ordenacaoNumero, setOrdenacaoNumero] = useState<'crescente' | 'decrescente'>('crescente');
   const [isZerando, setIsZerando] = useState(false);
+  const [comandasEmPreparo, setComandasEmPreparo] = useState<Set<number>>(new Set());
   const navigation = useNavigation<NavigationProp<any>>();
 
   const filtrarEOrdenarComandas = useCallback(() => {
@@ -74,9 +77,36 @@ export default function EditarScreen() {
   }, [filtrarEOrdenarComandas]);
 
   async function carregarComandas() {
-    let historico = await AsyncStorage.getItem('comandas_fechadas');
-    const comandasCarregadas = historico ? JSON.parse(historico) : [];
-    setComandas(comandasCarregadas);
+    try {
+      // Buscar todas as comandas do Firebase
+      const comandasFirebase = await FirestoreService.buscarTodasComandas();
+      
+      // Converter para o formato esperado
+      const comandasFormatadas: ComandaFechada[] = comandasFirebase.map(comanda => ({
+        id: comanda.id,
+        numero: comanda.numero,
+        itens: comanda.itens,
+        data: comanda.timestamp.toISOString(),
+        nomeCliente: comanda.nomeCliente,
+        totalSementes: comanda.totalSementes
+      }));
+      
+      setComandas(comandasFormatadas);
+      
+      // Carregar status das comandas em preparo
+      const comandasEmPreparoSet = new Set<number>();
+      
+      for (const comanda of comandasFirebase) {
+        if (comanda.status === 'preparando') {
+          comandasEmPreparoSet.add(comanda.numero);
+        }
+      }
+      
+      setComandasEmPreparo(comandasEmPreparoSet);
+    } catch (error) {
+      console.error('Erro ao carregar comandas:', error);
+      setComandas([]);
+    }
   }
 
   function formatarDataHora(dataStr: string) {
@@ -93,7 +123,7 @@ export default function EditarScreen() {
     });
   }
 
-  // Adicionar função para excluir comanda, atualizar relatório e comandas atendidas
+  // Adicionar função para excluir comanda do Firebase
   async function excluirComanda(comanda: ComandaFechada) {
     Alert.alert(
       'Excluir Comanda',
@@ -104,44 +134,48 @@ export default function EditarScreen() {
           text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
-            // Remover do histórico
-            const novoHistorico = comandas.filter(
-              c => c.numero !== comanda.numero,
-            );
-            await AsyncStorage.setItem(
-              'comandas_fechadas',
-              JSON.stringify(novoHistorico),
-            );
-            setComandas(novoHistorico);
-            // Atualizar relatório de vendas
-            let vendasRaw = await AsyncStorage.getItem('relatorio_vendas');
-            let vendas = vendasRaw ? JSON.parse(vendasRaw) : {};
-            comanda.itens.forEach(item => {
-              if (vendas[item.nome]) {
-                vendas[item.nome] -= item.quantidade;
-                if (vendas[item.nome] < 0) vendas[item.nome] = 0;
+            try {
+              if (comanda.id) {
+                // Deletar do Firebase
+                await FirestoreService.deletarComanda(comanda.id);
+                
+                // Decrementar contador de comandas atendidas
+                await FirestoreService.decrementarComandasAtendidas();
+                
+                // Recarregar comandas
+                await carregarComandas();
               }
-            });
-            await AsyncStorage.setItem(
-              'relatorio_vendas',
-              JSON.stringify(vendas),
-            );
-            // Atualizar comandas atendidas
-            let atendidasRaw = await AsyncStorage.getItem('comandas_atendidas');
-            let atendidas = atendidasRaw ? parseInt(atendidasRaw, 10) : 0;
-            if (atendidas > 0) atendidas--;
-            await AsyncStorage.setItem(
-              'comandas_atendidas',
-              atendidas.toString(),
-            );
+            } catch (error) {
+              console.error('Erro ao excluir comanda:', error);
+              Alert.alert('Erro', 'Não foi possível excluir a comanda.');
+            }
           },
         },
       ],
     );
   }
 
-  function editarComanda(comanda: ComandaFechada) {
-    navigation.navigate('Comanda', { comandaParaEditar: comanda });
+  async function editarComanda(comanda: ComandaFechada) {
+    try {
+      // Verificar se a comanda está sendo preparada no Firestore
+      const comandaAtual = await FirestoreService.buscarComandaPorNumero(comanda.numero);
+      
+      if (comandaAtual && comandaAtual.status === 'preparando') {
+        Alert.alert(
+          '❌ Comanda em Preparo',
+          'Esta comanda está sendo preparada na cozinha e não pode mais ser editada!',
+          [{ text: 'OK', style: 'default' }]
+        );
+        return;
+      }
+      
+      // Se não estiver sendo preparada, permite edição
+      navigation.navigate('Comanda', { comandaParaEditar: comanda });
+    } catch (error) {
+      console.error('Erro ao verificar status da comanda:', error);
+      // Em caso de erro, permite edição (fallback)
+      navigation.navigate('Comanda', { comandaParaEditar: comanda });
+    }
   }
 
 
@@ -171,16 +205,9 @@ export default function EditarScreen() {
               setIsZerando(true);
               console.log('🚀 Iniciando processo de zerar tudo...');
               
-              // Apagar todas as comandas do Firestore
-              console.log('🗑️ Deletando comandas do Firestore...');
-              await FirestoreService.zerarTodasComandas();
-              
-              // Limpar dados locais
-              console.log('🧹 Limpando dados locais...');
-              await AsyncStorage.setItem('comandas_fechadas', JSON.stringify([]));
-              await AsyncStorage.setItem('relatorio_vendas', JSON.stringify({}));
-              await AsyncStorage.setItem('comandas_atendidas', '0');
-              await AsyncStorage.setItem('comanda_numero_atual', '1');
+              // Zerar tudo no Firebase (comandas, relatórios e contadores)
+              console.log('🗑️ Zerando tudo no Firebase...');
+              await FirestoreService.zerarTudo();
               
               // Atualizar estado local
               setComandas([]);
@@ -189,7 +216,7 @@ export default function EditarScreen() {
               console.log('✅ Processo de zerar tudo concluído com sucesso!');
               Alert.alert(
                 '✅ Sucesso!', 
-                'Todas as comandas foram apagadas com sucesso!\n\n• Comandas do Firestore: Deletadas\n• Histórico local: Limpo\n• Relatório de vendas: Zerado\n• Contador de comandas: Resetado'
+                'Todos os dados foram apagados com sucesso!\n\n• Comandas do Firebase: Deletadas\n• Relatório de vendas: Zerado\n• Contador de comandas: Resetado\n• Cardápio: Mantido'
               );
             } catch (error) {
               console.error('❌ Erro ao zerar comandas:', error);
@@ -263,9 +290,16 @@ export default function EditarScreen() {
                     #{item.numero}
                   </Text>
                 </View>
-                <Text style={styles.comandaData}>
-                  {item.data && formatarDataHora(item.data)}
-                </Text>
+                <View style={styles.comandaHeaderRight}>
+                  <Text style={styles.comandaData}>
+                    {item.data && formatarDataHora(item.data)}
+                  </Text>
+                  {comandasEmPreparo.has(item.numero) && (
+                    <View style={styles.statusEmPreparo}>
+                      <Text style={styles.statusEmPreparoText}>👨‍🍳 Em Preparo</Text>
+                    </View>
+                  )}
+                </View>
               </View>
               
               <View style={styles.comandaContent}>
@@ -287,10 +321,19 @@ export default function EditarScreen() {
               
               <View style={styles.actionsContainer}>
                 <TouchableOpacity
-                  style={styles.buttonEditar}
+                  style={[
+                    styles.buttonEditar,
+                    comandasEmPreparo.has(item.numero) && styles.buttonEditarDisabled
+                  ]}
                   onPress={() => editarComanda(item)}
+                  disabled={comandasEmPreparo.has(item.numero)}
                 >
-                  <Text style={styles.buttonEditarText}>Editar</Text>
+                  <Text style={[
+                    styles.buttonEditarText,
+                    comandasEmPreparo.has(item.numero) && styles.buttonEditarTextDisabled
+                  ]}>
+                    {comandasEmPreparo.has(item.numero) ? 'Em Preparo' : 'Editar'}
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.buttonExcluir}
@@ -449,6 +492,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f3f4',
   },
+  comandaHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
   comandaNumeroContainer: {
     backgroundColor: '#9c27b0',
     borderRadius: 12,
@@ -466,6 +513,17 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     fontWeight: '500',
     fontFamily: 'monospace',
+  },
+  statusEmPreparo: {
+    backgroundColor: '#ff6b35',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusEmPreparoText: {
+    fontSize: 11,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   comandaContent: {
     flex: 1,
@@ -525,6 +583,14 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  buttonEditarDisabled: {
+    backgroundColor: '#9ca3af',
+    shadowColor: '#9ca3af',
+    opacity: 0.7,
+  },
+  buttonEditarTextDisabled: {
+    color: '#e5e7eb',
   },
   buttonExcluir: {
     backgroundColor: '#f44336',

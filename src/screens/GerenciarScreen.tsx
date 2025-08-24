@@ -1,21 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import SaborModal from '../components/SaborModal';
 import ConfirmModal from '../components/ConfirmModal';
-
-const CARDAPIO_KEY = 'cardapio_dinamico';
-
-const SABORES_INICIAIS = [
-  { nome: 'CARNE DE SOL+QUEIJO', valor: '2' },
-  { nome: '2 QUEIJOS', valor: '2' },
-  { nome: 'FRANGO', valor: '2' },
-  { nome: 'FRANGO+QUEIJO', valor: '2' },
-  { nome: 'CHOCOLATE', valor: '2' },
-  { nome: 'CARNE MOIDA', valor: '2' },
-];
+import { FirestoreService } from '../services/firestoreService';
 
 export default function GerenciarScreen() {
   const [sabores, setSabores] = useState<{ nome: string; valor: string }[]>([]);
@@ -26,41 +15,44 @@ export default function GerenciarScreen() {
 
   useEffect(() => {
     async function inicializarSabores() {
-      const data = await AsyncStorage.getItem(CARDAPIO_KEY);
-      if (!data) {
-        await AsyncStorage.setItem(CARDAPIO_KEY, JSON.stringify(SABORES_INICIAIS));
+      try {
+        // Inicializar cardápio se necessário
+        await FirestoreService.inicializarCardapio();
+        
+        // Carregar sabores do Firebase
+        await carregarSabores();
+      } catch (error) {
+        console.error('Erro ao inicializar sabores:', error);
+        setSabores([]);
       }
-      carregarSabores();
     }
     inicializarSabores();
   }, []);
 
   async function carregarSabores() {
-    const data = await AsyncStorage.getItem(CARDAPIO_KEY);
-    if (data) {
-      setSabores(JSON.parse(data));
-    } else {
+    try {
+      const saboresFirebase = await FirestoreService.buscarCardapio();
+      setSabores(saboresFirebase);
+    } catch (error) {
+      console.error('Erro ao carregar sabores:', error);
       setSabores([]);
     }
   }
 
   async function handleSaveSabor(nome: string, valor: string) {
-    const novoSabor = { nome, valor };
-    let cardapio = [...sabores];
-
-    if (editData) {
-      // Editando sabor existente
-      const index = cardapio.findIndex(s => s.nome === editData.nome);
-      if (index !== -1) {
-        cardapio[index] = novoSabor;
-      }
-    } else {
-      // Adicionando novo sabor
-      cardapio.push(novoSabor);
+    try {
+      // Salvar no Firebase
+      await FirestoreService.salvarItemCardapio(nome, valor);
+      
+      // Recarregar sabores
+      await carregarSabores();
+      
+      setModalVisible(false);
+      setEditData(null);
+    } catch (error) {
+      console.error('Erro ao salvar sabor:', error);
+      // Você pode adicionar um Alert aqui se quiser notificar o usuário
     }
-
-    await AsyncStorage.setItem(CARDAPIO_KEY, JSON.stringify(cardapio));
-    carregarSabores();
   }
 
   function handleEditSabor(sabor: { nome: string; valor: string }) {
@@ -81,13 +73,19 @@ export default function GerenciarScreen() {
   async function confirmarExclusao() {
     if (!saborParaExcluir) return;
     
-    let cardapio = [...sabores];
-    cardapio.splice(saborParaExcluir.index, 1);
-    await AsyncStorage.setItem(CARDAPIO_KEY, JSON.stringify(cardapio));
-    carregarSabores();
-    
-    setSaborParaExcluir(null);
-    setConfirmModalVisible(false);
+    try {
+      // Excluir do Firebase
+      await FirestoreService.excluirItemCardapio(saborParaExcluir.nome);
+      
+      // Recarregar sabores
+      await carregarSabores();
+      
+      setSaborParaExcluir(null);
+      setConfirmModalVisible(false);
+    } catch (error) {
+      console.error('Erro ao excluir sabor:', error);
+      // Você pode adicionar um Alert aqui se quiser notificar o usuário
+    }
   }
 
   return (
