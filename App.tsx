@@ -15,7 +15,6 @@ import EditarScreen from './src/screens/EditarScreen';
 import GerenciarScreen from './src/screens/GerenciarScreen';
 import RelatorioScreen from './src/screens/RelatorioScreen';
 import CozinhaMonitorScreen from './src/screens/CozinhaMonitorScreen';
-import './src/config/firebase';
 
 const Stack = createNativeStackNavigator();
 
