@@ -11,7 +11,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const TROFEU = require('../assets/PASTELSEMFUNDO.png');
+const TROFEU = require('../../assets/PASTELSEMFUNDO.png');
 
 type AnimatedButtonProps = {
   onPress: () => void;

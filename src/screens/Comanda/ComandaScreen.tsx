@@ -18,8 +18,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { FirestoreService } from '../services/firestoreService';
-import { Item } from '../types/Comanda';
+import { FirestoreService } from '../../services/firestoreService';
+import { Item } from '../../types/Comanda';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 

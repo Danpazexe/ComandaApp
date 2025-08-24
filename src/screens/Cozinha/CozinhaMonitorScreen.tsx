@@ -13,8 +13,8 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { Comanda } from '../types/Comanda';
-import { FirestoreService } from '../services/firestoreService';
+import { Comanda } from '../../types/Comanda';
+import { FirestoreService } from '../../services/firestoreService';
 
 type Props = NativeStackScreenProps<any, 'CozinhaMonitor'>;
 type TabType = 'novas' | 'preparando' | 'entregue';

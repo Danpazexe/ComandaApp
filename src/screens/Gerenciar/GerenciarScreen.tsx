@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import SaborModal from '../components/SaborModal';
-import ConfirmModal from '../components/ConfirmModal';
-import { FirestoreService } from '../services/firestoreService';
+import SaborModal from './components/SaborModal';
+import ConfirmModal from './components/ConfirmModal';
+import { FirestoreService } from '../../services/firestoreService';
 
 export default function GerenciarScreen() {
   const [sabores, setSabores] = useState<{ nome: string; valor: string }[]>([]);

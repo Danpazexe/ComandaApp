@@ -9,12 +9,12 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import HomeScreen from './src/screens/HomeScreen';
-import ComandaScreen from './src/screens/ComandaScreen';
-import EditarScreen from './src/screens/EditarScreen';
-import GerenciarScreen from './src/screens/GerenciarScreen';
-import RelatorioScreen from './src/screens/RelatorioScreen';
-import CozinhaMonitorScreen from './src/screens/CozinhaMonitorScreen';
+import HomeScreen from './src/screens/Home/HomeScreen';
+import ComandaScreen from './src/screens/Comanda/ComandaScreen';
+import EditarScreen from './src/screens/Editar/EditarScreen';
+import GerenciarScreen from './src/screens/Gerenciar/GerenciarScreen';
+import RelatorioScreen from './src/screens/Relatorio/RelatorioScreen';
+import CozinhaMonitorScreen from './src/screens/Cozinha/CozinhaMonitorScreen';
 
 const Stack = createNativeStackNavigator();
 

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FirestoreService } from '../services/firestoreService';
+import { FirestoreService } from '../../services/firestoreService';
 
 interface Item {
   nome: string;
