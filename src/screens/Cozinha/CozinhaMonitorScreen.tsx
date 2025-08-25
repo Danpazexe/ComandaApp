@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Comanda } from '../../types/Comanda';
 import { FirestoreService } from '../../services/firestoreService';
-import { FONTS } from '../../config/fonts';
 
 type Props = NativeStackScreenProps<any, 'CozinhaMonitor'>;
 type TabType = 'preparar' | 'preparando' | 'pronto' | 'entregue';
@@ -267,7 +266,7 @@ const styles = StyleSheet.create({
   numeroComanda: { fontSize: 28, fontWeight: 'bold', color: '#333' },
   statusChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   statusChipText: { fontSize: 13, fontWeight: 'bold', color: '#fff' },
-  nomeCliente: { fontSize: 18, fontWeight: '600', color: '#444', marginTop: 6, fontFamily: FONTS.EATING_PASTA },
+  nomeCliente: { fontSize: 18, fontWeight: '600', color: '#444', marginTop: 6 },
   timestamp: { fontSize: 14, color: '#666', marginTop: 4 },
   horaAtendimento: { fontSize: 13, color: '#ff6b35', marginTop: 2, fontWeight: '600' },
   itensContainer: { marginVertical: 14, flex: 1 },

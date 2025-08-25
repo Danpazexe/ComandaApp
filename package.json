@@ -9,8 +9,9 @@
     "start": "react-native start",
     "test": "jest",
     "android:build": "cd android && gradlew assembleRelease",
-    
-    "android:clean": "cd android && gradlew clean && cd .. && npx react-native run-android"
+    "android:clean": "cd android && gradlew clean && cd .. && npx react-native run-android",
+    "web:build": "cd web && npm run build",
+    "web:deploy": "npm run web:build && firebase deploy"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^4.4.7",
