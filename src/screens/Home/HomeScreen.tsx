@@ -193,6 +193,19 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
             >
               Monitor da Cozinha
             </AnimatedButton>
+            <AnimatedButton
+              onPress={() => navigation.navigate('ClienteMonitor')}
+              color={styles.buttonCliente}
+              style={{
+                paddingVertical: getResponsiveSize(16, 18, 20, 24),
+                paddingHorizontal: getResponsiveSize(28, 32, 36, 40),
+                marginBottom: getSpacing(14, 16, 18),
+                maxWidth: getResponsiveSize(300, 340, 380, 450),
+                width: getWidthPercentage(),
+              }}
+            >
+              Monitor de Clientes
+            </AnimatedButton>
           </View>
         </View>
       </View>
@@ -322,6 +335,22 @@ const styles = StyleSheet.create({
   },
   buttonCozinha: {
     backgroundColor: '#ff6b35',
+    borderRadius: 10,
+    alignItems: 'center',
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+    }),
+  },
+  buttonCliente: {
+    backgroundColor: '#007BFF',
     borderRadius: 10,
     alignItems: 'center',
     elevation: 2,

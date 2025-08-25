@@ -33,7 +33,7 @@ export default function EditarScreen() {
   const [pesquisa, setPesquisa] = useState('');
   const [ordenacaoNumero, setOrdenacaoNumero] = useState<'crescente' | 'decrescente'>('crescente');
   const [isZerando, setIsZerando] = useState(false);
-  const [comandasEmPreparo, setComandasEmPreparo] = useState<Set<number>>(new Set());
+  const [comandasNaoEditaveis, setComandasNaoEditaveis] = useState<Set<number>>(new Set());
   const navigation = useNavigation<NavigationProp<any>>();
 
   const filtrarEOrdenarComandas = useCallback(() => {
@@ -93,16 +93,17 @@ export default function EditarScreen() {
       
       setComandas(comandasFormatadas);
       
-      // Carregar status das comandas em preparo
-      const comandasEmPreparoSet = new Set<number>();
+      // Carregar status das comandas que não podem ser editadas
+      const comandasNaoEditaveisSet = new Set<number>();
       
       for (const comanda of comandasFirebase) {
-        if (comanda.status === 'preparando') {
-          comandasEmPreparoSet.add(comanda.numero);
+        // Só pode editar se estiver em espera (status 'aberta')
+        if (comanda.status !== 'aberta') {
+          comandasNaoEditaveisSet.add(comanda.numero);
         }
       }
       
-      setComandasEmPreparo(comandasEmPreparoSet);
+      setComandasNaoEditaveis(comandasNaoEditaveisSet);
     } catch (error) {
       console.error('Erro ao carregar comandas:', error);
       setComandas([]);
@@ -157,24 +158,52 @@ export default function EditarScreen() {
 
   async function editarComanda(comanda: ComandaFechada) {
     try {
-      // Verificar se a comanda está sendo preparada no Firestore
+      // Verificar o status atual da comanda no Firestore
       const comandaAtual = await FirestoreService.buscarComandaPorNumero(comanda.numero);
       
-      if (comandaAtual && comandaAtual.status === 'preparando') {
+      if (!comandaAtual) {
         Alert.alert(
-          '❌ Comanda em Preparo',
-          'Esta comanda está sendo preparada na cozinha e não pode mais ser editada!',
+          '❌ Comanda não encontrada',
+          'Esta comanda não foi encontrada no sistema!',
           [{ text: 'OK', style: 'default' }]
         );
         return;
       }
       
-      // Se não estiver sendo preparada, permite edição
-      navigation.navigate('Comanda', { comandaParaEditar: comanda });
+      // Só permite edição se estiver em espera (status 'aberta')
+      if (comandaAtual.status === 'aberta') {
+        navigation.navigate('Comanda', { comandaParaEditar: comanda });
+      } else {
+        let mensagem = '';
+        let titulo = '';
+        
+        switch (comandaAtual.status) {
+          case 'preparando':
+            titulo = '❌ Comanda em Preparo';
+            mensagem = 'Esta comanda está sendo preparada na cozinha e não pode mais ser editada!';
+            break;
+          case 'pronto':
+            titulo = '❌ Comanda Pronta';
+            mensagem = 'Esta comanda já está pronta e não pode mais ser editada!';
+            break;
+          case 'entregue':
+            titulo = '❌ Comanda Entregue';
+            mensagem = 'Esta comanda já foi entregue e não pode mais ser editada!';
+            break;
+          default:
+            titulo = '❌ Comanda não pode ser editada';
+            mensagem = 'Esta comanda não está mais disponível para edição!';
+        }
+        
+        Alert.alert(titulo, mensagem, [{ text: 'OK', style: 'default' }]);
+      }
     } catch (error) {
       console.error('Erro ao verificar status da comanda:', error);
-      // Em caso de erro, permite edição (fallback)
-      navigation.navigate('Comanda', { comandaParaEditar: comanda });
+      Alert.alert(
+        '❌ Erro',
+        'Não foi possível verificar o status da comanda. Tente novamente.',
+        [{ text: 'OK', style: 'default' }]
+      );
     }
   }
 
@@ -294,11 +323,7 @@ export default function EditarScreen() {
                   <Text style={styles.comandaData}>
                     {item.data && formatarDataHora(item.data)}
                   </Text>
-                  {comandasEmPreparo.has(item.numero) && (
-                    <View style={styles.statusEmPreparo}>
-                      <Text style={styles.statusEmPreparoText}>👨‍🍳 Em Preparo</Text>
-                    </View>
-                  )}
+
                 </View>
               </View>
               
@@ -323,16 +348,16 @@ export default function EditarScreen() {
                 <TouchableOpacity
                   style={[
                     styles.buttonEditar,
-                    comandasEmPreparo.has(item.numero) && styles.buttonEditarDisabled
+                    comandasNaoEditaveis.has(item.numero) && styles.buttonEditarDisabled
                   ]}
                   onPress={() => editarComanda(item)}
-                  disabled={comandasEmPreparo.has(item.numero)}
+                  disabled={comandasNaoEditaveis.has(item.numero)}
                 >
                   <Text style={[
                     styles.buttonEditarText,
-                    comandasEmPreparo.has(item.numero) && styles.buttonEditarTextDisabled
+                    comandasNaoEditaveis.has(item.numero) && styles.buttonEditarTextDisabled
                   ]}>
-                    {comandasEmPreparo.has(item.numero) ? 'Em Preparo' : 'Editar'}
+                    {comandasNaoEditaveis.has(item.numero) ? 'Não Editável' : 'Editar'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity

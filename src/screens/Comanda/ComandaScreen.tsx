@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { FirestoreService } from '../../services/firestoreService';
+import { FONTS } from '../../config/fonts';
 import { Item } from '../../types/Comanda';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
@@ -404,6 +405,7 @@ export default function ComandaScreen({ route }: Props) {
                   { 
                     fontSize: getFontSize(14, 16, 18, 20),
                     paddingVertical: getPadding(6, 8, 10, 12),
+                    fontFamily: FONTS.EATING_PASTA,
                   }
                 ]}
                 placeholder="Nome do cliente (opcional)"

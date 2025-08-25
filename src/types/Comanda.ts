@@ -4,13 +4,14 @@ export interface Item {
 }
 
 export interface Comanda {
-  id?: string; // ID do documento no Firestore
+  id?: string; 
   numero: number;
-  nomeCliente?: string; // Nome do cliente
+  nomeCliente?: string; 
   itens: Item[];
-  status: 'aberta' | 'preparando' | 'entregue';
+  status: 'aberta' | 'preparando' | 'pronto' | 'entregue';
   timestamp: Date;
-  horaAtendimento?: Date; // Hora que foi atendida (quando mudou para 'preparando')
+  horaAtendimento?: Date; 
+  horaPronto?: Date; 
   totalSementes?: number;
 }
 
@@ -20,4 +21,14 @@ export interface ComandaFechada {
   itens: Item[];
   data: string;
   totalSementes?: number;
+}
+
+// Interface para o monitor de clientes
+export interface PedidoMonitor {
+  id: string;
+  numero: number;
+  nomeCliente: string;
+  status: 'preparando' | 'pronto' | 'chamado';
+  timestamp: Date;
+  horaAtendimento?: Date;
 }

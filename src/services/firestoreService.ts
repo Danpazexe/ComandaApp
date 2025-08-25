@@ -68,7 +68,7 @@ export class FirestoreService {
   }
 
   // Atualizar status da comanda
-  static async atualizarStatus(comandaId: string, status: 'aberta' | 'preparando' | 'entregue'): Promise<void> {
+  static async atualizarStatus(comandaId: string, status: 'aberta' | 'preparando' | 'pronto' | 'chamado' | 'entregue'): Promise<void> {
     try {
       const updateData: any = {
         status,
@@ -186,7 +186,7 @@ export class FirestoreService {
   }
 
   // Listener para comandas por status específico
-  static onComandasPorStatus(status: 'aberta' | 'preparando' | 'entregue', callback: (comandas: Comanda[]) => void) {
+  static onComandasPorStatus(status: 'aberta' | 'preparando' | 'pronto' | 'chamado' | 'entregue', callback: (comandas: Comanda[]) => void) {
     return firestore()
       .collection(COMANDA_COLLECTION)
       .where('status', '==', status)

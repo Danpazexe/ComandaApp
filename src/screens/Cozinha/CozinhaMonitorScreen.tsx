@@ -15,38 +15,44 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Comanda } from '../../types/Comanda';
 import { FirestoreService } from '../../services/firestoreService';
+import { FONTS } from '../../config/fonts';
 
 type Props = NativeStackScreenProps<any, 'CozinhaMonitor'>;
-type TabType = 'novas' | 'preparando' | 'entregue';
+type TabType = 'preparar' | 'preparando' | 'pronto' | 'entregue';
 
 export default function CozinhaMonitorScreen({}: Props) {
-  const [activeTab, setActiveTab] = useState<TabType>('novas');
-  const [comandasNovas, setComandasNovas] = useState<Comanda[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>('preparar');
+  const [comandasPreparar, setComandasPreparar] = useState<Comanda[]>([]);
   const [comandasPreparando, setComandasPreparando] = useState<Comanda[]>([]);
+  const [comandasProntas, setComandasProntas] = useState<Comanda[]>([]);
   const [comandasEntregues, setComandasEntregues] = useState<Comanda[]>([]);
   const [loading, setLoading] = useState(true);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
   useEffect(() => {
-    const unsubscribeNovas = FirestoreService.onComandasPorStatus('aberta', (comandas) => {
-      setComandasNovas(comandas);
+    const unsubscribePreparar = FirestoreService.onComandasPorStatus('aberta', (comandas) => {
+      setComandasPreparar(comandas);
       setLoading(false);
     });
     const unsubscribePreparando = FirestoreService.onComandasPorStatus('preparando', (comandas) => {
       setComandasPreparando(comandas);
     });
+    const unsubscribeProntas = FirestoreService.onComandasPorStatus('pronto', (comandas) => {
+      setComandasProntas(comandas);
+    });
     const unsubscribeEntregues = FirestoreService.onComandasPorStatus('entregue', (comandas) => {
       setComandasEntregues(comandas);
     });
     return () => {
-      unsubscribeNovas();
+      unsubscribePreparar();
       unsubscribePreparando();
+      unsubscribeProntas();
       unsubscribeEntregues();
     };
   }, []);
 
-  const handleStatusChange = async (comandaId: string, novoStatus: 'preparando' | 'entregue') => {
+  const handleStatusChange = async (comandaId: string, novoStatus: 'preparando' | 'pronto' | 'entregue') => {
     try {
       await FirestoreService.atualizarStatus(comandaId, novoStatus);
     } catch (error) {
@@ -57,17 +63,7 @@ export default function CozinhaMonitorScreen({}: Props) {
   const formatarTimestamp = (timestamp: Date) =>
     timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  const calcularTempo = (timestamp: Date) => {
-    const diff = new Date().getTime() - timestamp.getTime();
-    const minutos = Math.floor(diff / (1000 * 60));
-    const segundos = Math.floor((diff % (1000 * 60)) / 1000);
-    return `${minutos}m ${segundos}s`;
-  };
-
   const renderComanda = ({ item }: { item: Comanda }) => {
-    const tempoDecorrido = calcularTempo(item.timestamp);
-    const tempoPreparo = item.horaAtendimento ? calcularTempo(item.horaAtendimento) : null;
-
     let cardColor = '#fff';
     let chipColor = '#999';
     let statusText = '';
@@ -75,15 +71,19 @@ export default function CozinhaMonitorScreen({}: Props) {
     if (item.status === 'aberta') {
       cardColor = '#fff4f0';
       chipColor = '#ff6b35';
-      statusText = '🆕 Nova';
+      statusText = '🆕 Em Espera';
     } else if (item.status === 'preparando') {
       cardColor = '#fff7ed';
       chipColor = '#ff6b35';
       statusText = '👨‍🍳 Preparando';
-    } else {
+    } else if (item.status === 'pronto') {
       cardColor = '#e8fce8';
       chipColor = '#4caf50';
-      statusText = '✅ Entregue';
+      statusText = '✅ Pronto';
+    } else {
+      cardColor = '#f0f0f0';
+      chipColor = '#666';
+      statusText = '📦 Entregue';
     }
 
     return (
@@ -97,13 +97,12 @@ export default function CozinhaMonitorScreen({}: Props) {
 
         {item.nomeCliente && <Text style={styles.nomeCliente}>{item.nomeCliente}</Text>}
         <Text style={styles.timestamp}>
-          {formatarTimestamp(item.timestamp)} • {tempoDecorrido}
+          Criada: {formatarTimestamp(item.timestamp)}
         </Text>
 
         {item.horaAtendimento && (
           <Text style={styles.horaAtendimento}>
             Atendida: {formatarTimestamp(item.horaAtendimento)}
-            {tempoPreparo && ` • ${tempoPreparo} de preparo`}
           </Text>
         )}
 
@@ -127,7 +126,7 @@ export default function CozinhaMonitorScreen({}: Props) {
         <View style={styles.botoesContainer}>
           {item.status === 'aberta' && (
             <TouchableOpacity
-              style={[styles.botao, styles.botaoPreparando]}
+              style={[styles.botao, styles.botaoPreparar]}
               onPress={() => handleStatusChange(item.id!, 'preparando')}
             >
               <Icon name="restaurant" size={22} color="#fff" />
@@ -136,11 +135,20 @@ export default function CozinhaMonitorScreen({}: Props) {
           )}
           {item.status === 'preparando' && (
             <TouchableOpacity
+              style={[styles.botao, styles.botaoPronto]}
+              onPress={() => handleStatusChange(item.id!, 'pronto')}
+            >
+              <Icon name="check" size={22} color="#fff" />
+              <Text style={styles.botaoText}>Pronto</Text>
+            </TouchableOpacity>
+          )}
+          {item.status === 'pronto' && (
+            <TouchableOpacity
               style={[styles.botao, styles.botaoEntregue]}
               onPress={() => handleStatusChange(item.id!, 'entregue')}
             >
-              <Icon name="check" size={22} color="#fff" />
-              <Text style={styles.botaoText}>Entregar</Text>
+              <Icon name="local-shipping" size={22} color="#fff" />
+              <Text style={styles.botaoText}>Entregue</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -150,15 +158,17 @@ export default function CozinhaMonitorScreen({}: Props) {
 
   const renderTab = () => {
     const tabsMap = {
-      novas: comandasNovas,
+      preparar: comandasPreparar,
       preparando: comandasPreparando,
+      pronto: comandasProntas,
       entregue: comandasEntregues,
     } as const;
 
     const emptyMessages = {
-      novas: ['Nenhum pedido novo', 'Aguardando novos pedidos...'],
+      preparar: ['Nenhum pedido em espera', 'Aguardando novos pedidos...'],
       preparando: ['Nenhum pedido em preparo', 'Aguardando cozinha...'],
-      entregue: ['Nenhum pedido entregue', 'Eles aparecerão aqui'],
+      pronto: ['Nenhum pedido pronto', 'Eles aparecerão aqui'],
+      entregue: ['Nenhum pedido entregue', 'Histórico de entregas'],
     } as const;
 
     const comandas = tabsMap[activeTab];
@@ -168,7 +178,7 @@ export default function CozinhaMonitorScreen({}: Props) {
       return (
         <View style={styles.emptyContainer}>
           <Icon
-            name={activeTab === 'novas' ? 'add-circle-outline' : activeTab === 'preparando' ? 'restaurant-menu' : 'check-circle-outline'}
+            name={activeTab === 'preparar' ? 'add-circle-outline' : activeTab === 'preparando' ? 'restaurant-menu' : activeTab === 'pronto' ? 'check-circle-outline' : 'local-shipping'}
             size={80}
             color="#ccc"
           />
@@ -207,24 +217,26 @@ export default function CozinhaMonitorScreen({}: Props) {
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
-        {['novas', 'preparando', 'entregue'].map((tab) => (
+        {['preparar', 'preparando', 'pronto', 'entregue'].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[styles.tab, activeTab === tab && styles.activeTab]}
             onPress={() => setActiveTab(tab as TabType)}
           >
             <Icon
-              name={tab === 'novas' ? 'add-circle' : tab === 'preparando' ? 'restaurant' : 'check-circle'}
+              name={tab === 'preparar' ? 'add-circle' : tab === 'preparando' ? 'restaurant' : tab === 'pronto' ? 'check-circle' : 'local-shipping'}
               size={20}
               color={activeTab === tab ? '#fff' : '#666'}
             />
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'novas'
-                ? `Novas (${comandasNovas.length})`
-                : tab === 'preparando'
-                ? `Preparando (${comandasPreparando.length})`
-                : `Entregue (${comandasEntregues.length})`}
-            </Text>
+                         <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+               {tab === 'preparar'
+                 ? `Em Espera (${comandasPreparar.length})`
+                 : tab === 'preparando'
+                 ? `Preparando (${comandasPreparando.length})`
+                 : tab === 'pronto'
+                 ? `Pronto (${comandasProntas.length})`
+                 : `Entregue (${comandasEntregues.length})`}
+             </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -255,7 +267,7 @@ const styles = StyleSheet.create({
   numeroComanda: { fontSize: 28, fontWeight: 'bold', color: '#333' },
   statusChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   statusChipText: { fontSize: 13, fontWeight: 'bold', color: '#fff' },
-  nomeCliente: { fontSize: 18, fontWeight: '600', color: '#444', marginTop: 6 },
+  nomeCliente: { fontSize: 18, fontWeight: '600', color: '#444', marginTop: 6, fontFamily: FONTS.EATING_PASTA },
   timestamp: { fontSize: 14, color: '#666', marginTop: 4 },
   horaAtendimento: { fontSize: 13, color: '#ff6b35', marginTop: 2, fontWeight: '600' },
   itensContainer: { marginVertical: 14, flex: 1 },
@@ -267,7 +279,8 @@ const styles = StyleSheet.create({
   totalText: { fontSize: 15, fontWeight: 'bold', color: '#333', textAlign: 'center' },
   botoesContainer: { marginTop: 10 },
   botao: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 12, marginTop: 8 },
-  botaoPreparando: { backgroundColor: '#ff6b35' },
-  botaoEntregue: { backgroundColor: '#4caf50' },
+  botaoPreparar: { backgroundColor: '#ff6b35' },
+  botaoPronto: { backgroundColor: '#4caf50' },
+  botaoEntregue: { backgroundColor: '#666' },
   botaoText: { fontSize: 15, fontWeight: 'bold', color: '#fff', marginLeft: 6 },
 });

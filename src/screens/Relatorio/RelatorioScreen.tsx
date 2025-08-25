@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, StatusBar } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FirestoreService } from '../services/firestoreService';
+import { FirestoreService } from '../../services/firestoreService';
 
 export default function RelatorioScreen() {
   const [vendas, setVendas] = useState<Record<string, number>>({});
