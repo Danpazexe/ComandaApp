@@ -20,8 +20,170 @@ import { useIsFocused } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { FirestoreService } from '../../services/firestoreService';
 import { Item } from '../../types/Comanda';
+import { useNavigation } from '@react-navigation/native';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
+
+// Header personalizado melhorado
+const Header = ({ 
+  navigation, 
+  numeroComanda, 
+  isLandscape, 
+  isTablet 
+}: { 
+  navigation: any; 
+  numeroComanda: number | null; 
+  isLandscape: boolean;
+  isTablet: boolean;
+}) => {
+  const [headerAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    // Animação de entrada do header
+    Animated.spring(headerAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 7,
+    }).start();
+  }, [headerAnim]);
+
+  const getResponsiveSizeHeader = (small: number, medium: number, large: number) => {
+    if (isTablet) return large;
+    if (isLandscape) return medium;
+    return small;
+  };
+
+  // Função para ajustar espaçamento em celulares pequenos
+  const getHeaderSpacing = () => {
+    if (isTablet) return 20;
+    if (isLandscape) return 16;
+    return 16; // Espaçamento médio para celulares pequenos
+  };
+
+  return (
+    <Animated.View 
+      style={[
+        styles.header,
+        {
+          transform: [
+            { 
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-50, 0],
+              })
+            }
+          ],
+          opacity: headerAnim,
+        }
+      ]}
+    >
+      <StatusBar backgroundColor="#ffb300" barStyle="light-content" />
+      
+      {/* Container principal do header */}
+      <View style={[
+        styles.headerContainer,
+        isTablet && styles.headerContainerTablet,
+                 { 
+           paddingHorizontal: getHeaderSpacing(),
+           paddingBottom: isTablet ? 12 : 10
+         }
+      ]}>
+        
+                {/* Lado esquerdo: Seta de voltar */}
+        <TouchableOpacity
+          style={[
+            styles.backButton,
+                         { 
+               padding: isTablet ? 12 : 10,
+               marginRight: getHeaderSpacing()
+             }
+          ]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
+        >
+                     <Icon 
+             name="arrow-back" 
+             size={getResponsiveSizeHeader(20, 22, 24)} 
+             color="#fff" 
+           />
+        </TouchableOpacity>
+
+        {/* Centro: Título e informações */}
+        <View style={[
+          styles.headerCenter,
+          { gap: getHeaderSpacing() }
+        ]}>
+          <View style={styles.titleContainer}>
+            <Icon 
+              name="receipt-long" 
+              size={getResponsiveSizeHeader(24, 28, 32)} 
+              color="#fff" 
+              style={styles.titleIcon}
+            />
+            <Text style={[
+              styles.headerTitle,
+              { fontSize: getResponsiveSizeHeader(18, 20, 24) }
+            ]}>
+              Comanda
+            </Text>
+          </View>
+          
+          {numeroComanda !== null && (
+            <View style={[
+              styles.comandaBadge,
+                             { 
+                 paddingHorizontal: getHeaderSpacing(),
+                 paddingVertical: isTablet ? 12 : 10
+               }
+            ]}>
+                             <Icon 
+                 name="confirmation-number" 
+                 size={getResponsiveSizeHeader(20, 24, 28)} 
+                 color="#e53935" 
+               />
+               <Text style={[
+                 styles.comandaBadgeText,
+                 { fontSize: getResponsiveSizeHeader(16, 18, 22) }
+               ]}>
+                 Nº{numeroComanda.toString().padStart(3, '0')}
+               </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Lado direito: Botão de edição */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('EditarComanda')}
+          style={[
+            styles.editButton,
+                         { 
+               padding: isTablet ? 12 : 10,
+               marginLeft: getHeaderSpacing()
+             }
+          ]}
+          activeOpacity={0.8}
+        >
+          <View style={styles.editButtonInner}>
+                         <Icon 
+               name="edit" 
+               size={getResponsiveSizeHeader(18, 20, 22)} 
+               color="#fff" 
+             />
+             <Text style={[
+               styles.editButtonText,
+               { fontSize: getResponsiveSizeHeader(12, 14, 16) }
+             ]}>
+               Editar
+             </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};
+
+
 
 export default function ComandaScreen({ route }: Props) {
   const [itens, setItens] = useState<Item[]>([]);
@@ -35,6 +197,9 @@ export default function ComandaScreen({ route }: Props) {
   const [isEnviando, setIsEnviando] = useState(false);
   const { width, height } = useWindowDimensions();
   const isFocused = useIsFocused();
+  const navigation = useNavigation<any>();
+
+
 
   // Responsive breakpoints
   const isLandscape = width > height && width > 700;
@@ -253,6 +418,12 @@ export default function ComandaScreen({ route }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
+      <Header 
+        navigation={navigation} 
+        numeroComanda={numeroComanda} 
+        isLandscape={isLandscape} 
+        isTablet={isTablet} 
+      />
       <View
         style={[
           styles.container, 
@@ -260,7 +431,6 @@ export default function ComandaScreen({ route }: Props) {
           isTablet && styles.containerTablet
         ]}
       >
-        <StatusBar backgroundColor="#ffb300" barStyle="light-content" />
         
         {/* Coluna esquerda: Cardápio */}
         <View style={[
@@ -329,55 +499,29 @@ export default function ComandaScreen({ route }: Props) {
           isLandscape && styles.colRightLandscape,
           isTablet && styles.colRightTablet
         ]}>
-          {/* Número da Comanda, Título e Total na mesma linha */}
-          <View style={[
-            styles.headerSection,
-            isTablet && styles.headerSectionTablet
-          ]}>
-            {numeroComanda !== null && (
-              <View style={[
-                styles.comandaInfo,
-                {
-                  padding: getPadding(8, 10, 12, 14),
-                  borderRadius: getResponsiveSize(10, 12, 14, 16),
-                }
-              ]}>
-                <Icon 
-                  name="confirmation-number" 
-                  size={getResponsiveSize(16, 18, 20, 22)} 
-                  color="#e53935" 
-                />
-                <Text style={[
-                  styles.comandaNumero,
-                  { fontSize: getFontSize(14, 16, 18, 20) }
-                ]}>
-                  Comanda Nº {numeroComanda}
-                </Text>
-              </View>
-            )}
-            
-            {itens.length > 0 && (
-              <View style={[
-                styles.totalContainer,
-                {
-                  padding: getPadding(8, 10, 12, 14), 
-                  borderRadius: getResponsiveSize(10, 12, 14, 16),
-                }
-              ]}>
-                <Icon 
-                  name="account-balance-wallet" 
-                  size={getResponsiveSize(16, 18, 20, 22)} 
-                  color="#4caf50" 
-                />
-                <Text style={[
-                  styles.totalText,
-                  { fontSize: getFontSize(14, 16, 18, 20) }
-                ]}>
-                  Total: {totalSementes} Sementes
-                </Text>
-              </View>
-            )}
-          </View>
+                     {/* Total de Sementes */}
+           {itens.length > 0 && (
+             <View style={[
+               styles.totalContainer,
+               {
+                 padding: getPadding(8, 10, 12, 14), 
+                 borderRadius: getResponsiveSize(10, 12, 14, 16),
+                 marginBottom: getSpacing(12, 16, 18, 20),
+               }
+             ]}>
+               <Icon 
+                 name="account-balance-wallet" 
+                 size={getResponsiveSize(16, 18, 20, 22)} 
+                 color="#4caf50" 
+               />
+               <Text style={[
+                 styles.totalText,
+                 { fontSize: getFontSize(14, 16, 18, 20) }
+               ]}>
+                 Total: {totalSementes} Sementes
+               </Text>
+             </View>
+           )}
 
           {/* Campo Nome do Cliente */}
           <View style={[
@@ -595,9 +739,122 @@ export default function ComandaScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: '#ffb300',
+    paddingTop: StatusBar.currentHeight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  headerContainerTablet: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  titleIcon: {
+    marginTop: 5,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  comandaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff5f5',
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: '#fed7d7',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    shadowColor: '#fed7d7',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#fed7d7',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+    }),
+  },
+  comandaBadgeText: {
+    color: '#e53935',
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    marginRight: 16,
+  },
+  editButton: {
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+    marginLeft: 16,
+  },
+  editButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 6,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    marginTop: 80, // Espaço para o header personalizado
   },
   containerLandscape: {
     flexDirection: 'row',
@@ -642,42 +899,7 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 28,
   },
-  headerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 12,
-    justifyContent: 'space-between',
-  },
-  headerSectionTablet: {
-    marginBottom: 16,
-    gap: 16,
-  },
-  comandaInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff5f5',
-    gap: 6,
-    borderWidth: 2,
-    borderColor: '#fed7d7',
-    shadowColor: '#fed7d7',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#fed7d7',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-      },
-    }),
-  },
-  comandaNumero: {
-    fontWeight: 'bold',
-    color: '#e53935',
-  },
+
   totalContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -836,4 +1058,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+
 });

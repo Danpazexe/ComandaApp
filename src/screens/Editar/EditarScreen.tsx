@@ -83,7 +83,6 @@ export default function EditarScreen() {
       
       // Converter para o formato esperado
       const comandasFormatadas: ComandaFechada[] = comandasFirebase.map(comanda => ({
-        id: comanda.id,
         numero: comanda.numero,
         itens: comanda.itens,
         data: comanda.timestamp.toISOString(),
@@ -136,15 +135,20 @@ export default function EditarScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (comanda.id) {
+              // Buscar a comanda no Firestore para obter o ID
+              const comandaAtual = await FirestoreService.buscarComandaPorNumero(comanda.numero);
+              
+              if (comandaAtual && comandaAtual.id) {
                 // Deletar do Firebase
-                await FirestoreService.deletarComanda(comanda.id);
+                await FirestoreService.deletarComanda(comandaAtual.id);
                 
                 // Decrementar contador de comandas atendidas
                 await FirestoreService.decrementarComandasAtendidas();
                 
                 // Recarregar comandas
                 await carregarComandas();
+              } else {
+                Alert.alert('Erro', 'Comanda não encontrada para exclusão.');
               }
             } catch (error) {
               console.error('Erro ao excluir comanda:', error);
@@ -192,7 +196,7 @@ export default function EditarScreen() {
             break;
           default:
             titulo = '❌ Comanda não pode ser editada';
-            mensagem = 'Esta comanda não está mais disponível para edição!';
+            mensagem = `Esta comanda não está mais disponível para edição! Status: ${comandaAtual.status}`;
         }
         
         Alert.alert(titulo, mensagem, [{ text: 'OK', style: 'default' }]);

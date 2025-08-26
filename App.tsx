@@ -16,7 +16,6 @@ import GerenciarScreen from './src/screens/Gerenciar/GerenciarScreen';
 import RelatorioScreen from './src/screens/Relatorio/RelatorioScreen';
 import CozinhaMonitorScreen from './src/screens/Cozinha/CozinhaMonitorScreen';
 
-
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -37,11 +36,7 @@ export default function App() {
             name="Comanda"
             component={ComandaScreen}
             options={{
-              title: 'Comanda',
-              headerStyle: { backgroundColor: '#ffb300' },
-              headerTintColor: '#fff',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerTitleAlign: 'center',
+                headerShown: false,
             }}
           />
           <Stack.Screen

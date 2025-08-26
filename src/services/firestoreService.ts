@@ -138,7 +138,6 @@ export class FirestoreService {
       const querySnapshot = await firestore()
         .collection(COMANDA_COLLECTION)
         .where('numero', '==', numero)
-        .where('status', '!=', 'entregue')
         .limit(1)
         .get();
 
