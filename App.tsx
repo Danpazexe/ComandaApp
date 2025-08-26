@@ -15,6 +15,7 @@ import EditarScreen from './src/screens/Editar/EditarScreen';
 import GerenciarScreen from './src/screens/Gerenciar/GerenciarScreen';
 import RelatorioScreen from './src/screens/Relatorio/RelatorioScreen';
 import CozinhaMonitorScreen from './src/screens/Cozinha/CozinhaMonitorScreen';
+import ConfigScreen from './src/screens/Config/ConfigScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -81,6 +82,14 @@ export default function App() {
               headerTintColor: '#fff',
               headerTitleStyle: { fontWeight: 'bold' },
               headerTitleAlign: 'center',
+            }}
+          />
+
+          <Stack.Screen
+            name="Config"
+            component={ConfigScreen}
+            options={{
+              headerShown: false,
             }}
           />
 

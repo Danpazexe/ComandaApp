@@ -6,7 +6,6 @@ import {
   StyleSheet,
   useWindowDimensions,
   Animated,
-  Linking,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -99,21 +98,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
             Nova Comanda
           </AnimatedButton>
 
-          <AnimatedButton
-            onPress={() => navigation.navigate('EditarComanda')}
-            gradient={['#8e24aa', '#ba68c8']}
-            style={styles.buttonWrapper}
-          >
-            Editar Comanda
-          </AnimatedButton>
 
-          <AnimatedButton
-            onPress={() => navigation.navigate('AdicionarSabor')}
-            gradient={['#1976d2', '#64b5f6']}
-            style={styles.buttonWrapper}
-          >
-            Gerenciar Cardápio
-          </AnimatedButton>
 
           <AnimatedButton
             onPress={() => navigation.navigate('Relatorio')}
@@ -132,11 +117,11 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
           </AnimatedButton>
 
           <AnimatedButton
-            onPress={() => Linking.openURL('https://comandaapp-797db.web.app')}
-            gradient={['#1e3a8a', '#3b82f6']}
+            onPress={() => navigation.navigate('Config')}
+            gradient={['#6b7280', '#9ca3af']}
             style={styles.buttonWrapper}
           >
-            Monitor de Clientes
+            Configurações
           </AnimatedButton>
         </View>
       </View>
