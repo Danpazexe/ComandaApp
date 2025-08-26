@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
   Animated,
   Platform,
+  Linking,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -180,32 +181,37 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<any, '
             >
               Relatório
             </AnimatedButton>
-            <AnimatedButton
-              onPress={() => navigation.navigate('CozinhaMonitor')}
-              color={styles.buttonCozinha}
-              style={{
-                paddingVertical: getResponsiveSize(16, 18, 20, 24),
-                paddingHorizontal: getResponsiveSize(28, 32, 36, 40),
-                marginBottom: getSpacing(14, 16, 18),
-                maxWidth: getResponsiveSize(300, 340, 380, 450),
-                width: getWidthPercentage(),
-              }}
-            >
-              Monitor da Cozinha
-            </AnimatedButton>
-            <AnimatedButton
-              onPress={() => navigation.navigate('ClienteMonitor')}
-              color={styles.buttonCliente}
-              style={{
-                paddingVertical: getResponsiveSize(16, 18, 20, 24),
-                paddingHorizontal: getResponsiveSize(28, 32, 36, 40),
-                marginBottom: getSpacing(14, 16, 18),
-                maxWidth: getResponsiveSize(300, 340, 380, 450),
-                width: getWidthPercentage(),
-              }}
-            >
-              Monitor de Clientes
-            </AnimatedButton>
+                         <AnimatedButton
+               onPress={() => navigation.navigate('CozinhaMonitor')}
+               color={styles.buttonCozinha}
+               style={{
+                 paddingVertical: getResponsiveSize(16, 18, 20, 24),
+                 paddingHorizontal: getResponsiveSize(28, 32, 36, 40),
+                 marginBottom: getSpacing(14, 16, 18),
+                 maxWidth: getResponsiveSize(300, 340, 380, 450),
+                 width: getWidthPercentage(),
+               }}
+             >
+               Monitor da Cozinha
+             </AnimatedButton>
+             <AnimatedButton
+               onPress={() => {
+                 // Abrir o monitor de clientes em uma nova aba
+                 const monitorUrl = 'https://comandaapp-797db.web.app';
+                 Linking.openURL(monitorUrl);
+               }}
+               color={styles.buttonMonitor}
+               style={{
+                 paddingVertical: getResponsiveSize(16, 18, 20, 24),
+                 paddingHorizontal: getResponsiveSize(28, 32, 36, 40),
+                 marginBottom: getSpacing(14, 16, 18),
+                 maxWidth: getResponsiveSize(300, 340, 380, 450),
+                 width: getWidthPercentage(),
+               }}
+             >
+               Monitor de Clientes
+             </AnimatedButton>
+
           </View>
         </View>
       </View>
@@ -349,8 +355,8 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  buttonCliente: {
-    backgroundColor: '#007BFF',
+  buttonMonitor: {
+    backgroundColor: '#1E3A8A',
     borderRadius: 10,
     alignItems: 'center',
     elevation: 2,
@@ -365,6 +371,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
+
   buttonText: { 
     color: '#fff', 
     fontSize: 18, 

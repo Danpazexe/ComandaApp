@@ -112,7 +112,7 @@ const App: React.FC = () => {
 
         {/* DIREITA */}
         <div className="col-wrap">
-          <div className="titulo-dir">JÁ CHAMADOS ({pedidosParaDireita.length})</div>
+          <div className="titulo-dir">JÁ CHAMADOS</div>
           <div className="box-branco box-lateral">
             <div className="scroll-container">
               {renderLista(pedidosParaDireita)}

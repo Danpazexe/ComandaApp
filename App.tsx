@@ -15,7 +15,7 @@ import EditarScreen from './src/screens/Editar/EditarScreen';
 import GerenciarScreen from './src/screens/Gerenciar/GerenciarScreen';
 import RelatorioScreen from './src/screens/Relatorio/RelatorioScreen';
 import CozinhaMonitorScreen from './src/screens/Cozinha/CozinhaMonitorScreen';
-import ClienteMonitorScreen from './src/screens/ClienteMonitor/ClienteMonitorScreen';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -88,17 +88,7 @@ export default function App() {
               headerTitleAlign: 'center',
             }}
           />
-          <Stack.Screen
-            name="ClienteMonitor"
-            component={ClienteMonitorScreen}
-            options={{
-              title: 'Monitor de Clientes',
-              headerStyle: { backgroundColor: '#1663D6' },
-              headerTintColor: '#fff',
-              headerTitleStyle: { fontWeight: 'bold' },
-              headerTitleAlign: 'center',
-            }}
-          />
+
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
