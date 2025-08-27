@@ -17,5 +17,6 @@
     "Shown",
     "subtitle",
     "Touchable"
-  ]
+  ],
+  "java.configuration.updateBuildConfiguration": "automatic"
 }

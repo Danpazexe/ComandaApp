@@ -79,7 +79,7 @@ export default function RelatorioScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <StatusBar backgroundColor="#4caf50" barStyle="light-content" />
+        {/* StatusBar gerenciada pelo App.tsx */}
 
         {/* Cabeçalho com Resumo */}
         <View style={styles.header}>

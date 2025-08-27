@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Animated,
   ToastAndroid,
-  StatusBar,
   useWindowDimensions,
   Alert,
   TextInput,
@@ -78,7 +77,7 @@ const Header = ({
         }
       ]}
     >
-      <StatusBar backgroundColor="#ffb300" barStyle="light-content" />
+      {/* StatusBar gerenciada pelo App.tsx */}
       
       {/* Container principal do header */}
       <View style={[
@@ -746,12 +745,14 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
     backgroundColor: '#ffb300',
-    paddingTop: StatusBar.currentHeight,
+    paddingTop: 30, // Valor fixo para Android/iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -896,7 +897,7 @@ const styles = StyleSheet.create({
   },
   colRightTablet: {
     paddingLeft: 28,
-    margin: 16,
+    margin: 10,
     borderRadius: 28,
   },
 

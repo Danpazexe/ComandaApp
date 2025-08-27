@@ -5,7 +5,6 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  StatusBar,
   Alert,
   TextInput,
   ActivityIndicator,
@@ -269,7 +268,7 @@ export default function EditarScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <StatusBar backgroundColor="#9c27b0" barStyle="light-content" />
+        {/* StatusBar gerenciada pelo App.tsx */}
 
         {/* Campo de Pesquisa */}
         <View style={styles.searchContainer}>

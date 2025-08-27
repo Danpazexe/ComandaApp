@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  StatusBar,
   useWindowDimensions,
   Alert,
   ActivityIndicator,
@@ -212,7 +211,7 @@ export default function CozinhaMonitorScreen({}: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#ff6b35" barStyle="light-content" />
+      {/* StatusBar gerenciada pelo App.tsx */}
 
       {/* Tabs */}
       <View style={styles.tabContainer}>

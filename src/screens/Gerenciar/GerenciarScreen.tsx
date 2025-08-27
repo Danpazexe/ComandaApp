@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import SaborModal from './components/SaborModal';
@@ -90,8 +90,7 @@ export default function GerenciarScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-      <StatusBar backgroundColor="#1976d2" barStyle="light-content" />
-
+      {/* StatusBar gerenciada pelo App.tsx */}
 
       {/* Botão Adicionar */}
       <View style={styles.addButtonContainer}>
