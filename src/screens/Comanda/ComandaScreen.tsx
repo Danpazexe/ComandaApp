@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
   ActivityIndicator,
   Platform,
+  Modal,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { FirestoreService } from '../../services/firestoreService';
 import { Item } from '../../types/Comanda';
 import { useNavigation } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 type Props = NativeStackScreenProps<any, 'Comanda'>;
 
@@ -194,11 +196,14 @@ export default function ComandaScreen({ route }: Props) {
   const [totalSementes, setTotalSementes] = useState(0);
   const [nomeCliente, setNomeCliente] = useState<string>('');
   const [isEnviando, setIsEnviando] = useState(false);
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const { width, height } = useWindowDimensions();
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
 
-
+  // Animações para o Bottom Sheet
+  const bottomSheetAnim = useRef(new Animated.Value(0)).current;
+  const overlayAnim = useRef(new Animated.Value(0)).current;
 
   // Responsive breakpoints
   const isLandscape = width > height && width > 700;
@@ -239,6 +244,60 @@ export default function ComandaScreen({ route }: Props) {
     if (isLandscape) return medium;
     return small;
   };
+
+  // Função para mostrar/esconder Bottom Sheet
+  const toggleBottomSheet = useCallback((show: boolean) => {
+    console.log('🎯 toggleBottomSheet chamado com:', show);
+    
+    if (show) {
+      console.log('📱 Configurando Bottom Sheet para VISÍVEL');
+      setBottomSheetVisible(true);
+      Animated.parallel([
+        Animated.timing(bottomSheetAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        console.log('✅ Animação de entrada concluída');
+      });
+    } else {
+      console.log('📱 Configurando Bottom Sheet para INVISÍVEL');
+      Animated.parallel([
+        Animated.timing(bottomSheetAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        console.log('✅ Animação de saída concluída');
+        setBottomSheetVisible(false);
+      });
+    }
+  }, [bottomSheetAnim, overlayAnim]);
+
+  // Bottom Sheet só abre quando clicado no botão flutuante
+  // useEffect(() => {
+  //   console.log('🔄 useEffect itens.length:', itens.length, 'bottomSheetVisible:', bottomSheetVisible);
+  //   
+  //   if (itens.length > 0 && !bottomSheetVisible) {
+  //     console.log('📱 Mostrando Bottom Sheet - itens adicionados');
+  //       toggleBottomSheet(true);
+  //   } else if (itens.length === 0 && bottomSheetVisible) {
+  //     console.log('📱 Escondendo Bottom Sheet - comanda vazia');
+  //       toggleBottomSheet(false);
+  //   }
+  // }, [itens.length, bottomSheetVisible, toggleBottomSheet]);
 
   useEffect(() => {
     async function carregarCardapio() {
@@ -416,324 +475,385 @@ export default function ComandaScreen({ route }: Props) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <Header 
-        navigation={navigation} 
-        numeroComanda={numeroComanda} 
-        isLandscape={isLandscape} 
-        isTablet={isTablet} 
-      />
-      <View
-        style={[
-          styles.container, 
-          isLandscape && styles.containerLandscape,
-          isTablet && styles.containerTablet
-        ]}
-      >
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <Header 
+          navigation={navigation} 
+          numeroComanda={numeroComanda} 
+          isLandscape={isLandscape} 
+          isTablet={isTablet} 
+        />
         
-        {/* Coluna esquerda: Cardápio */}
-        <View style={[
-          styles.col, 
-          styles.colLeft,
-          isLandscape && styles.colLeftLandscape,
-          isTablet && styles.colLeftTablet
-        ]}>
-          <FlatList
-            data={cardapio}
-            keyExtractor={item => item.nome}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.menuButton,
-                  {
-                    padding: getPadding(14, 16, 18, 20),
-                    marginBottom: getSpacing(10, 12, 14, 16),
-                    borderRadius: getResponsiveSize(16, 18, 20, 22),
-                  }
-                ]}
-                onPress={() => adicionarItem(item.nome)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.menuButtonContent}>
-                  <Text style={[
-                    styles.menuButtonTitle,
-                    { fontSize: getFontSize(14, 15, 16, 17) }
-                  ]}>
-                    {item.nome}
-                  </Text>
-                  <View style={styles.menuButtonFooter}>
-                    <Icon 
-                      name="attach-money" 
-                      size={getResponsiveSize(14, 16, 18, 20)} 
-                      color="#fffde7" 
-                    />
-                    <Text style={[
-                      styles.menuButtonValor,
-                      { fontSize: getFontSize(12, 13, 14, 15) }
-                    ]}>
-                      {item.valor} Sementes
-                    </Text>
-                  </View>
-                </View>
-                <Icon 
-                  name="add-circle" 
-                  size={getResponsiveSize(20, 24, 26, 28)} 
-                  color="#fff" 
-                  style={styles.addIcon} 
-                />
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={{ 
-              paddingBottom: getSpacing(12, 16, 18, 20), 
-              paddingTop: getSpacing(6, 8, 10, 12) 
-            }}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-
-        {/* Coluna direita: Selecionados */}
-        <View style={[
-          styles.col, 
-          styles.colRight,
-          isLandscape && styles.colRightLandscape,
-          isTablet && styles.colRightTablet
-        ]}>
-                     {/* Total de Sementes */}
-           {itens.length > 0 && (
-             <View style={[
-               styles.totalContainer,
-               {
-                 padding: getPadding(8, 10, 12, 14), 
-                 borderRadius: getResponsiveSize(10, 12, 14, 16),
-                 marginBottom: getSpacing(12, 16, 18, 20),
-               }
-             ]}>
-               <Icon 
-                 name="account-balance-wallet" 
-                 size={getResponsiveSize(16, 18, 20, 22)} 
-                 color="#4caf50" 
-               />
-               <Text style={[
-                 styles.totalText,
-                 { fontSize: getFontSize(14, 16, 18, 20) }
-               ]}>
-                 Total: {totalSementes} Sementes
-               </Text>
-             </View>
-           )}
-
-          {/* Campo Nome do Cliente */}
+        {/* Container principal - apenas cardápio */}
+        <View
+          style={[
+            styles.container, 
+            isLandscape && styles.containerLandscape,
+            isTablet && styles.containerTablet
+          ]}
+        >
+          {/* Cardápio ocupando toda a largura */}
           <View style={[
-            styles.clienteSection,
-            { marginBottom: getSpacing(12, 16, 18, 20) }
+            styles.menuContainer,
+            isTablet && styles.menuContainerTablet
           ]}>
-            <View style={[
-              styles.clienteInputContainer,
-              {
-                paddingHorizontal: getPadding(10, 12, 14, 16),
-                paddingVertical: getPadding(6, 8, 10, 12),
-                borderRadius: getResponsiveSize(10, 12, 14, 16),
-              }
-            ]}>
-              <Icon 
-                name="person" 
-                size={getResponsiveSize(18, 20, 22, 24)} 
-                color="#666" 
-                style={styles.clienteIcon} 
-              />
-              <TextInput
-                style={[
-                  styles.clienteInput,
-                  { 
-                    fontSize: getFontSize(14, 16, 18, 20),
-                    paddingVertical: getPadding(6, 8, 10, 12),
-                  }
-                ]}
-                placeholder="Nome do cliente (opcional)"
-                value={nomeCliente}
-                onChangeText={setNomeCliente}
-                placeholderTextColor="#999"
-              />
-            </View>
-          </View>
-          
-          <FlatList
-            data={itens}
-            keyExtractor={(_, index) => `item-${index}`}
-            renderItem={({ item, index }) => (
-              <Animated.View
-                style={[
-                  styles.itemRow,
-                  {
-                    padding: getPadding(12, 16, 18, 20),
-                    borderRadius: getResponsiveSize(14, 16, 18, 20),
-                    marginBottom: getSpacing(6, 8, 10, 12),
-                  },
-                  { opacity: fadeAnims[index] || 1 }
-                ]}
-              >
-                <View style={styles.itemInfo}>
-                  <Text style={[
-                    styles.selectedItem,
-                    { 
-                      fontSize: getFontSize(13, 15, 16, 17),
-                      marginBottom: getSpacing(2, 3, 4, 5),
-                    }
-                  ]}>
-                    {item.nome}
-                  </Text>
-                  <View style={styles.itemDetails}>
-                    <Icon 
-                      name="shopping-cart" 
-                      size={getResponsiveSize(14, 16, 18, 20)} 
-                      color="#666" 
-                    />
-                    <Text style={[
-                      styles.itemQuantidade,
-                      { fontSize: getFontSize(11, 13, 14, 15) }
-                    ]}>
-                      x{item.quantidade}
-                    </Text>
-                    <Text style={[
-                      styles.itemValor,
-                      { fontSize: getFontSize(11, 13, 14, 15) }
-                    ]}>
-                      {(() => {
-                        const cardapioItem = cardapio.find(c => c.nome === item.nome);
-                        return cardapioItem ? `${parseInt(cardapioItem.valor) * item.quantidade} Sementes` : '';
-                      })()}
-                    </Text>
-                  </View>
-                </View>
+            <FlatList
+              data={cardapio}
+              keyExtractor={item => item.nome}
+              numColumns={isTablet ? 2 : 1}
+              columnWrapperStyle={isTablet ? styles.menuRow : undefined}
+              renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
-                    styles.removeButton,
+                    styles.menuButton,
                     {
-                      padding: getPadding(10, 12, 14, 16),
-                      borderRadius: getResponsiveSize(10, 12, 14, 16),
-                      marginLeft: getSpacing(10, 12, 14, 16),
+                      padding: getPadding(14, 16, 18, 20),
+                      marginBottom: getSpacing(10, 12, 14, 16),
+                      borderRadius: getResponsiveSize(16, 18, 20, 22),
+                      flex: isTablet ? 1 : undefined,
+                      marginHorizontal: isTablet ? getSpacing(4, 6, 8, 10) : 0,
                     }
                   ]}
-                  onPress={() => removerItem(index)}
+                  onPress={() => adicionarItem(item.nome)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.menuButtonContent}>
+                    <Text style={[
+                      styles.menuButtonTitle,
+                      { fontSize: getFontSize(14, 15, 16, 17) }
+                    ]}>
+                      {item.nome}
+                    </Text>
+                    <View style={styles.menuButtonFooter}>
+                      <Icon 
+                        name="attach-money" 
+                        size={getResponsiveSize(14, 16, 18, 20)} 
+                        color="#fffde7" 
+                      />
+                      <Text style={[
+                        styles.menuButtonValor,
+                        { fontSize: getFontSize(12, 13, 14, 15) }
+                      ]}>
+                        {item.valor} Sementes
+                      </Text>
+                    </View>
+                  </View>
+                  <Icon 
+                    name="add-circle" 
+                    size={getResponsiveSize(20, 24, 26, 28)} 
+                    color="#fff" 
+                    style={styles.addIcon} 
+                  />
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={{ 
+                paddingBottom: getSpacing(12, 16, 18, 20), 
+                paddingTop: getSpacing(6, 8, 10, 12),
+                paddingHorizontal: getSpacing(8, 10, 12, 14),
+              }}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </View>
+
+        {/* Botão flutuante para abrir Bottom Sheet */}
+        <TouchableOpacity
+          style={[
+            styles.floatingButton,
+            {
+              bottom: getSpacing(20, 24, 28, 32),
+              right: getSpacing(16, 20, 24, 28),
+            }
+          ]}
+          onPress={() => toggleBottomSheet(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.floatingButtonContent}>
+            <Icon 
+              name="shopping-cart" 
+              size={getResponsiveSize(20, 22, 24, 26)} 
+              color="#fff" 
+            />
+            {itens.length > 0 && (
+              <View style={styles.floatingBadge}>
+                <Text style={styles.floatingBadgeText}>
+                  {itens.reduce((total, item) => total + item.quantidade, 0)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* Bottom Sheet para itens selecionados */}
+        <Modal
+          visible={bottomSheetVisible}
+          transparent
+          animationType="none"
+          onRequestClose={() => toggleBottomSheet(false)}
+        >
+          {/* Overlay */}
+          <Animated.View 
+            style={[
+              styles.overlay,
+              { opacity: overlayAnim }
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.overlayTouchable}
+              activeOpacity={1}
+              onPress={() => toggleBottomSheet(false)}
+            />
+          </Animated.View>
+
+          {/* Bottom Sheet */}
+                      <Animated.View
+              style={[
+                styles.bottomSheet,
+                {
+                  transform: [
+                    {
+                      translateY: bottomSheetAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [height, 0],
+                      }),
+                    },
+                  ],
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  // Força posição fixa
+                  top: 'auto',
+                  height: 400, // Altura fixa
+                  maxHeight: 400, // Altura máxima fixa
+                },
+              ]}
+            >
+            {/* Handle do Bottom Sheet */}
+            <View style={styles.bottomSheetHandle}>
+              <View style={styles.handleBar} />
+            </View>
+
+            {/* Conteúdo do Bottom Sheet */}
+            <View style={styles.bottomSheetContent}>
+              {/* Total de Sementes */}
+              <View style={[
+                styles.totalContainer,
+                {
+                  padding: getPadding(8, 10, 12, 14), 
+                  borderRadius: getResponsiveSize(10, 12, 14, 16),
+                  marginBottom: getSpacing(12, 16, 18, 20),
+                }
+              ]}>
+                <Icon 
+                  name="account-balance-wallet" 
+                  size={getResponsiveSize(16, 18, 20, 22)} 
+                  color="#4caf50" 
+                />
+                <Text style={[
+                  styles.totalText,
+                  { fontSize: getFontSize(14, 16, 18, 20) }
+                ]}>
+                  Total: {totalSementes} Sementes
+                </Text>
+              </View>
+
+              {/* Campo Nome do Cliente */}
+              <View style={[
+                styles.clienteSection,
+                { marginBottom: getSpacing(12, 16, 18, 20) }
+              ]}>
+                <View style={[
+                  styles.clienteInputContainer,
+                  {
+                    paddingHorizontal: getPadding(10, 12, 14, 16),
+                    paddingVertical: getPadding(6, 8, 10, 12),
+                    borderRadius: getResponsiveSize(10, 12, 14, 16),
+                  }
+                ]}>
+                  <Icon 
+                    name="person" 
+                    size={getResponsiveSize(18, 20, 22, 24)} 
+                    color="#666" 
+                    style={styles.clienteIcon} 
+                  />
+                  <TextInput
+                    style={[
+                      styles.clienteInput,
+                      { 
+                        fontSize: getFontSize(14, 16, 18, 20),
+                        paddingVertical: getPadding(6, 8, 10, 12),
+                      }
+                    ]}
+                    placeholder="Nome do cliente (opcional)"
+                    value={nomeCliente}
+                    onChangeText={setNomeCliente}
+                    placeholderTextColor="#999"
+                    blurOnSubmit={true}
+                    returnKeyType="done"
+                    keyboardType="default"
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                    spellCheck={false}
+                  />
+                </View>
+              </View>
+
+              {/* Lista de itens selecionados */}
+              <FlatList
+                data={itens}
+                keyExtractor={(_, index) => `item-${index}`}
+                renderItem={({ item, index }) => (
+                  <Animated.View
+                    style={[
+                      styles.itemRow,
+                      {
+                        padding: getPadding(12, 16, 18, 20),
+                        borderRadius: getResponsiveSize(14, 16, 18, 20),
+                        marginBottom: getSpacing(6, 8, 10, 12),
+                      },
+                      { opacity: fadeAnims[index] || 1 }
+                    ]}
+                  >
+                    <View style={styles.itemInfo}>
+                      <Text style={[
+                        styles.selectedItem,
+                        { 
+                          fontSize: getFontSize(13, 15, 16, 17),
+                          marginBottom: getSpacing(2, 3, 4, 5),
+                        }
+                      ]}>
+                        {item.nome}
+                      </Text>
+                      <View style={styles.itemDetails}>
+                        <Icon 
+                          name="shopping-cart" 
+                          size={getResponsiveSize(14, 16, 18, 20)} 
+                          color="#666" 
+                        />
+                        <Text style={[
+                          styles.itemQuantidade,
+                          { fontSize: getFontSize(11, 13, 14, 15) }
+                        ]}>
+                          x{item.quantidade}
+                        </Text>
+                        <Text style={[
+                          styles.itemValor,
+                          { fontSize: getFontSize(11, 13, 14, 15) }
+                        ]}>
+                          {(() => {
+                            const cardapioItem = cardapio.find(c => c.nome === item.nome);
+                            return cardapioItem ? `${parseInt(cardapioItem.valor) * item.quantidade} Sementes` : '';
+                          })()}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.removeButton,
+                        {
+                          padding: getPadding(10, 12, 14, 16),
+                          borderRadius: getResponsiveSize(10, 12, 14, 16),
+                          marginLeft: getSpacing(10, 12, 14, 16),
+                        }
+                      ]}
+                      onPress={() => removerItem(index)}
+                      activeOpacity={0.8}
+                    >
+                      <Icon 
+                        name="remove" 
+                        size={getResponsiveSize(18, 20, 22, 24)} 
+                        color="#fff" 
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+                ItemSeparatorComponent={() => <View style={{ height: getSpacing(6, 8, 10, 12) }} />}
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: height * 0.4 }}
+              />
+
+              {/* Botões de Ação */}
+              <View style={[
+                styles.actionButtons,
+                { 
+                  marginTop: getSpacing(8, 10, 12, 14),
+                  gap: getSpacing(8, 10, 12, 14),
+                }
+              ]}>
+                <TouchableOpacity 
+                  style={[
+                    styles.clearButton,
+                    {
+                      padding: getPadding(14, 16, 18, 20),
+                      borderRadius: getResponsiveSize(12, 14, 16, 18),
+                    }
+                  ]} 
+                  onPress={limparComanda}
                   activeOpacity={0.8}
                 >
                   <Icon 
-                    name="remove" 
+                    name="clear-all" 
                     size={getResponsiveSize(18, 20, 22, 24)} 
                     color="#fff" 
                   />
+                  <Text style={[
+                    styles.clearButtonText,
+                    { fontSize: getFontSize(13, 15, 16, 17) }
+                  ]}>
+                    Limpar
+                  </Text>
                 </TouchableOpacity>
-              </Animated.View>
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: getSpacing(6, 8, 10, 12) }} />}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={[
-                styles.emptyState,
-                { paddingVertical: getSpacing(20, 30, 35, 40) }
-              ]}>
-                <Icon 
-                  name="receipt-long" 
-                  size={getResponsiveSize(30, 40, 45, 50)} 
-                  color="#ccc" 
-                />
-                <Text style={[
-                  styles.emptyText,
-                  { fontSize: getFontSize(14, 16, 18, 20) }
-                ]}>
-                  Nenhum item selecionado
-                </Text>
-                <Text style={[
-                  styles.emptySubtext,
-                  { fontSize: getFontSize(11, 13, 14, 15) }
-                ]}>
-                  Toque nos itens do cardápio para adicionar
-                </Text>
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.finishButton,
+                    {
+                      padding: getPadding(14, 16, 18, 20),
+                      borderRadius: getResponsiveSize(12, 14, 16, 18),
+                    },
+                    isEnviando && styles.finishButtonDisabled
+                  ]} 
+                  onPress={fecharComanda}
+                  disabled={isEnviando}
+                  activeOpacity={0.8}
+                >
+                  {isEnviando ? (
+                    <>
+                      <ActivityIndicator 
+                        size="small" 
+                        color="#ffffff" 
+                        style={{ marginRight: getSpacing(6, 8, 10, 12) }} 
+                      />
+                      <Text style={[
+                        styles.finishButtonText,
+                        { fontSize: getFontSize(13, 15, 16, 17) }
+                      ]}>
+                        Enviando...
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Icon 
+                        name="restaurant" 
+                        size={getResponsiveSize(18, 20, 22, 24)} 
+                        color="#fff" 
+                      />
+                      <Text style={[
+                        styles.finishButtonText,
+                        { fontSize: getFontSize(13, 15, 16, 17) }
+                      ]}>
+                        Enviar Comanda
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
-            }
-          />
-
-          {/* Botões de Ação */}
-          <View style={[
-            styles.actionButtons,
-            { 
-              marginTop: getSpacing(8, 10, 12, 14),
-              gap: getSpacing(8, 10, 12, 14),
-            }
-          ]}>
-            {itens.length > 0 && (
-              <TouchableOpacity 
-                style={[
-                  styles.clearButton,
-                  {
-                    padding: getPadding(14, 16, 18, 20),
-                    borderRadius: getResponsiveSize(12, 14, 16, 18),
-                  }
-                ]} 
-                onPress={limparComanda}
-                activeOpacity={0.8}
-              >
-                <Icon 
-                  name="clear-all" 
-                  size={getResponsiveSize(18, 20, 22, 24)} 
-                  color="#fff" 
-                />
-                <Text style={[
-                  styles.clearButtonText,
-                  { fontSize: getFontSize(13, 15, 16, 17) }
-                ]}>
-                  Limpar
-                </Text>
-              </TouchableOpacity>
-            )}
-            
-            <TouchableOpacity 
-              style={[
-                styles.finishButton,
-                {
-                  padding: getPadding(14, 16, 18, 20),
-                  borderRadius: getResponsiveSize(12, 14, 16, 18),
-                },
-                (itens.length === 0 || isEnviando) && styles.finishButtonDisabled
-              ]} 
-              onPress={fecharComanda}
-              disabled={itens.length === 0 || isEnviando}
-              activeOpacity={0.8}
-            >
-              {isEnviando ? (
-                <>
-                  <ActivityIndicator 
-                    size="small" 
-                    color="#ffffff" 
-                    style={{ marginRight: getSpacing(6, 8, 10, 12) }} 
-                  />
-                  <Text style={[
-                    styles.finishButtonText,
-                    { fontSize: getFontSize(13, 15, 16, 17) }
-                  ]}>
-                    Enviando...
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Icon 
-                    name="restaurant" 
-                    size={getResponsiveSize(18, 20, 22, 24)} 
-                    color="#fff" 
-                  />
-                  <Text style={[
-                    styles.finishButtonText,
-                    { fontSize: getFontSize(13, 15, 16, 17) }
-                  ]}>
-                    Enviar Comanda
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+            </View>
+          </Animated.View>
+        </Modal>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -858,47 +978,72 @@ const styles = StyleSheet.create({
     marginTop: 80, // Espaço para o header personalizado
   },
   containerLandscape: {
-    flexDirection: 'row',
+    // Removido flexDirection row
   },
   containerTablet: {
     paddingHorizontal: 16,
   },
-  col: {
+  
+  // Novo container para o cardápio
+  menuContainer: {
     flex: 1,
     padding: 12,
   },
-  colLeft: {
-    borderRightWidth: 1,
-    borderRightColor: '#e9ecef',
-    maxWidth: 500,
+  menuContainerTablet: {
+    padding: 16,
   },
-  colLeftLandscape: {
-    maxWidth: 450,
+  menuRow: {
+    justifyContent: 'space-between',
   },
-  colLeftTablet: {
-    maxWidth: 1000,
-    padding: 10,
+
+  // Estilos do Bottom Sheet
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  colRight: {
+  overlayTouchable: {
     flex: 1,
-    paddingLeft: 20,
+  },
+  bottomSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#ffb300',
-    borderStyle: 'dashed',
-    margin: 10,
-    minWidth: 280,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 20,
+    maxHeight: '80%',
+    minHeight: 400,
+    zIndex: 1000, 
+    top: 'auto',
+    transform: 'none', 
   },
-  colRightLandscape: {
-    flex: 0.8,
-    paddingLeft: 24,
-    margin: 12,
+  bottomSheetHandle: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
   },
-  colRightTablet: {
-    paddingLeft: 28,
-    margin: 10,
-    borderRadius: 28,
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#ccc',
+    borderRadius: 2,
+  },
+  bottomSheetContent: {
+    padding: 20,
+    paddingBottom: 30,
+    flex: 1,
+    justifyContent: 'space-between',
   },
 
   totalContainer: {
@@ -1016,18 +1161,6 @@ const styles = StyleSheet.create({
   removeButton: {
     backgroundColor: '#e53935',
   },
-  emptyState: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyText: {
-    color: '#666',
-    fontWeight: '600',
-  },
-  emptySubtext: {
-    color: '#999',
-    textAlign: 'center',
-  },
   actionButtons: {
     flexDirection: 'row',
     gap: 10,
@@ -1059,5 +1192,51 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
-
+  
+  // Estilos para o botão flutuante
+  floatingButton: {
+    position: 'absolute',
+    zIndex: 1000,
+    backgroundColor: '#ffb300',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    shadowColor: '#ffb300',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#ffb300',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      },
+    }),
+  },
+  floatingButtonContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  floatingBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#e53935',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  floatingBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });
