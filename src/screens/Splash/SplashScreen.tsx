@@ -3,9 +3,9 @@ import {
   View,
   StyleSheet,
   Dimensions,
-  StatusBar,
   Animated,
   Image,
+  StatusBar,
 } from "react-native";
 
 const { width, height } = Dimensions.get("window");
@@ -20,9 +20,11 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const logoOpacityBR = useRef(new Animated.Value(0)).current;
   const backgroundScale = useRef(new Animated.Value(0)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
-  const statusBarColor = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Ocultar a StatusBar completamente
+    StatusBar.setHidden(true);
+    
     Animated.sequence([
       Animated.parallel([
         Animated.timing(logoOpacityMR, {
@@ -51,12 +53,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           duration: 700,
           useNativeDriver: true,
         }),
-        Animated.timing(statusBarColor, {
-          toValue: 1,
-          duration: 300,
-          delay: 150,
-          useNativeDriver: false,
-        }),
         Animated.parallel([
           Animated.timing(logoOpacityMR, {
             toValue: 0,
@@ -82,27 +78,19 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     ]).start();
 
     const timeout = setTimeout(() => {
-      onFinish(); // onFinish é usado aqui
+      onFinish();
     }, 4000);
-
-    // Listener para mudar a cor da status bar dinamicamente
-    const statusBarListener = statusBarColor.addListener(({ value }) => {
-      if (value > 0) {
-        StatusBar.setBackgroundColor('#4d2c19');
-        StatusBar.setBarStyle('light-content');
-      }
-    });
 
     return () => {
       clearTimeout(timeout);
-      statusBarColor.removeListener(statusBarListener);
+      // Restaurar a StatusBar quando o componente for desmontado
+      StatusBar.setHidden(false);
     };
-  }, [onFinish, logoScale, logoOpacityMR, logoOpacityBR, backgroundScale, backgroundOpacity, statusBarColor]);
+  }, [onFinish, logoScale, logoOpacityMR, logoOpacityBR, backgroundScale, backgroundOpacity]);
 
   return (
     <View style={styles.container}>
-      <StatusBar translucent backgroundColor="#fff" barStyle="dark-content" />
-
+      <StatusBar hidden={true} translucent={true} />
       <Animated.View
         style={[
           styles.logoWrapper,
