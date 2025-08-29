@@ -1,179 +1,140 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   Dimensions,
   StatusBar,
   Animated,
-} from 'react-native';
+  Image,
+} from "react-native";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
-  // Valores animados
-  const logoScale = useRef(new Animated.Value(0)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleTranslateY = useRef(new Animated.Value(50)).current;
-  const subtitleOpacity = useRef(new Animated.Value(0)).current;
-  const subtitleTranslateY = useRef(new Animated.Value(30)).current;
+  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoOpacityMR = useRef(new Animated.Value(0)).current;
+  const logoOpacityBR = useRef(new Animated.Value(0)).current;
+  const backgroundScale = useRef(new Animated.Value(0)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
+  const statusBarColor = useRef(new Animated.Value(0)).current;
 
-  // Animações de entrada
   useEffect(() => {
-    const animationSequence = () => {
-      // Background fade in
-      Animated.timing(backgroundOpacity, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }).start();
-
-      // Logo scale e fade in
-      Animated.sequence([
-        Animated.timing(logoScale, {
-          toValue: 1.2,
-          duration: 600,
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(logoOpacityMR, {
+          toValue: 1,
+          duration: 800,
           useNativeDriver: true,
         }),
-        Animated.timing(logoScale, {
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+
+      Animated.delay(400),
+
+      Animated.parallel([
+        Animated.timing(backgroundOpacity, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }),
-      ]).start();
+        Animated.timing(backgroundScale, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(statusBarColor, {
+          toValue: 1,
+          duration: 300,
+          delay: 150,
+          useNativeDriver: false,
+        }),
+        Animated.parallel([
+          Animated.timing(logoOpacityMR, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(logoOpacityBR, {
+            toValue: 1,
+            duration: 300,
+            delay: 50,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
 
-      Animated.timing(logoOpacity, {
-        toValue: 1,
+      Animated.delay(1500),
+
+      Animated.timing(logoOpacityBR, {
+        toValue: 0,
         duration: 600,
         useNativeDriver: true,
-      }).start();
+      }),
+    ]).start();
 
-      // Título com delay
-      Animated.parallel([
-        Animated.timing(titleOpacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleTranslateY, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]).start();
+    const timeout = setTimeout(() => {
+      onFinish(); // onFinish é usado aqui
+    }, 4000);
 
-      // Subtítulo com delay maior
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(subtitleOpacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(subtitleTranslateY, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, 400);
+    // Listener para mudar a cor da status bar dinamicamente
+    const statusBarListener = statusBarColor.addListener(({ value }) => {
+      if (value > 0) {
+        StatusBar.setBackgroundColor('#4d2c19');
+        StatusBar.setBarStyle('light-content');
+      }
+    });
 
-      // Finalizar após todas as animações
-      setTimeout(() => {
-        // Animações de saída
-        Animated.parallel([
-          Animated.timing(logoScale, {
-            toValue: 1.5,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(logoOpacity, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(titleOpacity, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(subtitleOpacity, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          onFinish();
-        });
-      }, 2500);
+    return () => {
+      clearTimeout(timeout);
+      statusBarColor.removeListener(statusBarListener);
     };
-
-    animationSequence();
-  }, []);
+  }, [onFinish, logoScale, logoOpacityMR, logoOpacityBR, backgroundScale, backgroundOpacity, statusBarColor]);
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-      />
-      
-      {/* Background gradiente simulado */}
-      <Animated.View style={[styles.backgroundContainer, { opacity: backgroundOpacity }]}>
-        <View style={styles.gradient} />
+      <StatusBar translucent backgroundColor="#fff" barStyle="dark-content" />
+
+      <Animated.View
+        style={[
+          styles.logoWrapper,
+          { opacity: logoOpacityMR, transform: [{ scale: logoScale }], zIndex: 1 },
+        ]}
+      >
+        <Image
+          source={require("../../assets/LOGOSEMFUNDOMR.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </Animated.View>
 
-      {/* Conteúdo principal */}
-      <View style={styles.content}>
-        {/* Logo animado */}
-        <Animated.View style={[
-          styles.logoContainer,
-          {
-            opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
-          }
-        ]}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>🍽️</Text>
-          </View>
-        </Animated.View>
+      <Animated.View
+        style={[
+          styles.background,
+          { transform: [{ scale: backgroundScale }], opacity: backgroundOpacity },
+        ]}
+      />
 
-        {/* Título animado */}
-        <Animated.Text style={[
-          styles.title,
-          {
-            opacity: titleOpacity,
-            transform: [{ translateY: titleTranslateY }],
-          }
-        ]}>
-          ComandaApp
-        </Animated.Text>
-
-        {/* Subtítulo animado */}
-        <Animated.Text style={[
-          styles.subtitle,
-          {
-            opacity: subtitleOpacity,
-            transform: [{ translateY: subtitleTranslateY }],
-          }
-        ]}>
-          Gerencie suas comandas com facilidade
-        </Animated.Text>
-      </View>
-
-      {/* Indicador de carregamento */}
-      <View style={styles.loadingIndicator}>
-        <View style={styles.dot} />
-        <View style={styles.dot} />
-        <View style={styles.dot} />
-      </View>
+      <Animated.View
+        style={[
+          styles.logoWrapper,
+          { opacity: logoOpacityBR, transform: [{ scale: logoScale }], zIndex: 3 },
+        ]}
+      >
+        <Image
+          source={require("../../assets/LOGOSEMFUNDOBR.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </Animated.View>
     </View>
   );
 };
@@ -181,82 +142,35 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    position: "relative",
   },
-  backgroundContainer: {
-    position: 'absolute',
+  background: {
+    position: "absolute",
+    width: width * 2,
+    height: height * 2,
+    backgroundColor: "#4d2c19",
+    borderRadius: (width + height) / 2,
+    top: -height / 2,
+    left: -width / 2,
+    zIndex: 2,
+  },
+  logo: {
+    width: width * 0.6,
+    height: height * 0.3,
+    alignSelf: "center",
+  },
+  logoWrapper: {
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  gradient: {
-    flex: 1,
-    backgroundColor: '#667eea',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  logoContainer: {
-    marginBottom: 50,
-  },
-  logoCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#fff',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  logoText: {
-    fontSize: 70,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 20,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 6,
-    letterSpacing: 1,
-  },
-  subtitle: {
-    fontSize: 20,
-    color: 'rgba(255, 255, 255, 0.95)',
-    textAlign: 'center',
-    lineHeight: 28,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-    letterSpacing: 0.5,
-  },
-  loadingIndicator: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: 120,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    marginHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

@@ -34,6 +34,10 @@ function StatusBarManager({ routeName }: { routeName: string }) {
   // Função para aplicar a configuração da StatusBar com base na rota
   function applyStatusBarConfig(route: string) {
     switch (route) {
+        case 'Splash':
+          StatusBar.setBarStyle('light-content');
+          StatusBar.setBackgroundColor('transparent');
+          break;
         case 'Home':
           StatusBar.setBarStyle('dark-content');
           StatusBar.setBackgroundColor('#ffffff');
